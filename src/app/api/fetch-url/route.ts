@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FetchClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
+export const dynamic = 'force-static';
+
 export async function POST(request: NextRequest) {
     try {
         const { url } = await request.json();
