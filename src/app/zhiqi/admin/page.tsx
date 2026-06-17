@@ -248,14 +248,11 @@ type ProductQuota = {
     value: number | 'unlimited';  // 具体金额或'unlimited'表示不限制
 };
 
-// 配额类型：角色配额 / 成员配额
-type QuotaCategory = 'role' | 'member';
-
 // 配额规则数据类型定义
 type QuotaRule = {
     id: string;
     name: string;
-    quotaType: QuotaCategory;  // 角色配额 or 成员配额
+    quotaType: 'role' | 'member';  // 角色配额 or 成员配额
     // 成员配额字段
     memberCount: number;
     quotaPerMember: number;  // 保留兼容性
@@ -718,7 +715,6 @@ function EnterpriseAdminContent() {
     
     // 配额规则状态
     const [quotaRules, setQuotaRules] = useState<QuotaRule[]>(initialQuotaRulesData);
-    const [quotaCategory, setQuotaCategory] = useState<QuotaCategory>('role');
     
     // 配额列表筛选-配额类型
     const [quotaTypeFilter, setQuotaTypeFilter] = useState<'all' | 'role' | 'member'>('all');
@@ -852,7 +848,7 @@ function EnterpriseAdminContent() {
     const [editingQuotaId, setEditingQuotaId] = useState<string | null>(null); // 编辑中的配额ID
     const [quotaName, setQuotaName] = useState('');
     const [quotaNameError, setQuotaNameError] = useState('');
-    const [memberSelectType, setMemberSelectType] = useState<'all' | 'member' | 'organization'>('all');
+    const [memberSelectType, setMemberSelectType] = useState<'all' | 'member' | 'organization' | 'role'>('all');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
     const [selectedOrgs, setSelectedOrgs] = useState<string[]>([]);
     const [expandedOrgNodes, setExpandedOrgNodes] = useState<string[]>(['dept-1']);
@@ -906,7 +902,6 @@ function EnterpriseAdminContent() {
         setEditingQuotaId(null);
         setQuotaName('');
         setQuotaNameError('');
-        setQuotaCategory('role');
         setMemberSelectType('all');
         setSelectedMembers([]);
         setSelectedOrgs([]);
@@ -929,9 +924,11 @@ function EnterpriseAdminContent() {
         resetCreateQuotaForm();
         setEditingQuotaId(rule.id);
         setQuotaName(rule.name);
-        setQuotaCategory(rule.quotaType);
         if (rule.quotaType === 'role') {
+            setMemberSelectType('role');
             setSelectedRoleForQuota(rule.roleName || '');
+        } else {
+            setMemberSelectType('all');
         }
         // 填充配额数据
         if (rule.lobsterQuota.value === 'unlimited') {
@@ -1007,22 +1004,25 @@ function EnterpriseAdminContent() {
         
         if (!isNameValid) return;
         
-        // 角色配额验证
-        if (quotaCategory === 'role' && !editingQuotaId) {
+        // 选角色验证
+        if (memberSelectType === 'role' && !editingQuotaId) {
             if (!selectedRoleForQuota) {
                 alert('请选择角色');
                 return;
             }
         }
         
-        // 成员配额验证
-        if (quotaCategory === 'member' && !editingQuotaId) {
-            if (memberSelectType === 'member' && selectedMembers.length === 0) {
+        // 选成员验证
+        if (memberSelectType === 'member' && !editingQuotaId) {
+            if (selectedMembers.length === 0) {
                 alert('请选择至少一个成员');
                 return;
             }
-            
-            if (memberSelectType === 'organization' && selectedOrgs.length === 0) {
+        }
+        
+        // 选组织验证
+        if (memberSelectType === 'organization' && !editingQuotaId) {
+            if (selectedOrgs.length === 0) {
                 alert('请选择至少一个组织');
                 return;
             }
@@ -1067,8 +1067,8 @@ function EnterpriseAdminContent() {
             // 创建模式
             console.log('创建配额:', quotaData);
             
-            if (quotaCategory === 'role') {
-                // 角色配额
+            if (memberSelectType === 'role') {
+                // 选角色 - 创建角色配额
                 const newRule: QuotaRule = {
                     id: Date.now().toString(),
                     name: quotaName,
@@ -1087,7 +1087,7 @@ function EnterpriseAdminContent() {
                 setQuotaRules(prev => [...prev, newRule]);
                 alert('角色配额创建成功，状态为未生效');
             } else {
-                // 成员配额
+                // 全部成员/选组织/选成员 - 创建成员配额
                 let memberCount = 0;
                 if (memberSelectType === 'all') {
                     memberCount = members.length;
@@ -2378,59 +2378,7 @@ function EnterpriseAdminContent() {
                                 <p className="mt-1 text-xs text-gray-400 text-right">{quotaName.length}/100</p>
                             </div>
 
-                            {/* 配额类型选择（仅创建时可选，编辑时不可切换） */}
-                            {!editingQuotaId && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    配额类型 <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex gap-6">
-                                    <label className="flex items-center cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="quotaCategory"
-                                            checked={quotaCategory === 'role'}
-                                            onChange={() => setQuotaCategory('role')}
-                                            className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
-                                        />
-                                        <span className={`ml-2 text-sm ${quotaCategory === 'role' ? 'text-[#006bff] font-medium' : 'text-gray-700'}`}>角色配额</span>
-                                    </label>
-                                    <label className="flex items-center cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="quotaCategory"
-                                            checked={quotaCategory === 'member'}
-                                            onChange={() => setQuotaCategory('member')}
-                                            className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
-                                        />
-                                        <span className={`ml-2 text-sm ${quotaCategory === 'member' ? 'text-[#006bff] font-medium' : 'text-gray-700'}`}>成员配额</span>
-                                    </label>
-                                </div>
-                            </div>
-                            )}
-
-                            {/* 角色配额 - 选择角色 */}
-                            {quotaCategory === 'role' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    选择角色 <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={selectedRoleForQuota}
-                                    onChange={(e) => setSelectedRoleForQuota(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                >
-                                    <option value="">请选择角色，单选</option>
-                                    <option value="全部角色">全部角色</option>
-                                    {roleList.map(role => (
-                                        <option key={role.id} value={role.name}>{role.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            )}
-
-                            {/* 成员配额 - 选择成员方式 */}
-                            {quotaCategory === 'member' && (
+                            {/* 选择成员方式（拍平：全部成员、选组织、选成员、选角色） */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     选择成员 <span className="text-red-500">*</span>
@@ -2445,6 +2393,7 @@ function EnterpriseAdminContent() {
                                                 setMemberSelectType('all');
                                                 setSelectedMembers([]);
                                                 setSelectedOrgs([]);
+                                                setSelectedRoleForQuota('');
                                             }}
                                             className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
                                         />
@@ -2458,6 +2407,7 @@ function EnterpriseAdminContent() {
                                             onChange={() => {
                                                 setMemberSelectType('organization');
                                                 setSelectedMembers([]);
+                                                setSelectedRoleForQuota('');
                                             }}
                                             className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
                                         />
@@ -2471,10 +2421,25 @@ function EnterpriseAdminContent() {
                                             onChange={() => {
                                                 setMemberSelectType('member');
                                                 setSelectedOrgs([]);
+                                                setSelectedRoleForQuota('');
                                             }}
                                             className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
                                         />
                                         <span className="ml-2 text-sm text-gray-700">选成员</span>
+                                    </label>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="memberSelectType"
+                                            checked={memberSelectType === 'role'}
+                                            onChange={() => {
+                                                setMemberSelectType('role');
+                                                setSelectedMembers([]);
+                                                setSelectedOrgs([]);
+                                            }}
+                                            className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700">选角色</span>
                                     </label>
                                 </div>
                                 
@@ -2520,8 +2485,8 @@ function EnterpriseAdminContent() {
                                         {/* 成员列表 */}
                                         <div className="max-h-60 overflow-y-auto">
                                             {filteredMembers.map(member => (
-                                                <label 
-                                                    key={member.id} 
+                                                <label
+                                                    key={member.id}
                                                     className="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-b-0"
                                                 >
                                                     <input
@@ -2551,8 +2516,24 @@ function EnterpriseAdminContent() {
                                         {renderOrgTree(organizationTree, 0)}
                                     </div>
                                 )}
+
+                                {/* 选角色 */}
+                                {memberSelectType === 'role' && (
+                                    <div>
+                                        <select
+                                            value={selectedRoleForQuota}
+                                            onChange={(e) => setSelectedRoleForQuota(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                        >
+                                            <option value="">请选择角色，单选</option>
+                                            <option value="全部角色">全部角色</option>
+                                            {roleList.map(role => (
+                                                <option key={role.id} value={role.name}>{role.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
-                            )}
                             
                             {/* 配额金额设置 */}
                             <div>

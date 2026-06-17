@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   // outputFileTracingRoot: path.resolve(__dirname, '../../'),  // Uncomment and add 'import path from "path"' if needed
   /* config options here */
   output: 'export',
-  basePath: process.env.NODE_ENV === 'production' ? '/zqi' : '',
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/zqi/' : '',
+  basePath: process.env.NODE_ENV === 'production' ? '/zqi_claude' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/zqi_claude/' : '',
   allowedDevOrigins: ['*.dev.coze.site'],
   images: {
     unoptimized: true,
