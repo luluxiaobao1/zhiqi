@@ -155,7 +155,7 @@ export default function ResourceGroupPage() {
     useEffect(() => {
         const isLoggedIn = localStorage.getItem('zhiqi_logged_in');
         if (!isLoggedIn) {
-            router.push('/zhiqi/login');
+            router.push('/login');
             return;
         }
         const userInfoStr = localStorage.getItem('zhiqi_user_info');
@@ -173,7 +173,7 @@ export default function ResourceGroupPage() {
     const handleLogout = () => {
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
-        window.location.href = '/zhiqi';
+        window.location.href = '/';
     };
 
     // 过滤资源组
@@ -194,7 +194,7 @@ export default function ResourceGroupPage() {
             {/* 顶部导航栏 */}
             <header className="fixed top-0 left-0 right-0 h-[50px] bg-white z-[1000] flex items-center justify-between px-4" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
                 <div className="flex items-center">
-                    <Link href="/zhiqi" className="flex items-center mr-4">
+                    <Link href="/" className="flex items-center mr-4">
                         <div className="flex items-center">
                             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="mr-1">
                                 <path d="M14 2C7.37 2 2 7.37 2 14C2 20.63 7.37 26 14 26C16.95 26 19.7 24.95 21.8 23.1L20.3 21.6C18.6 23.1 16.4 24 14 24C8.48 24 4 19.52 4 14C4 8.48 8.48 4 14 4C16.5 4 18.7 4.9 20.4 6.4L21.9 4.9C19.75 2.95 17 2 14 2Z" fill="#0066FF" />
@@ -208,7 +208,7 @@ export default function ResourceGroupPage() {
                     </Link>
                     {/* 工作台和企业按钮 */}
                     <div className="flex items-center gap-2 ml-2">
-                        <Link href="/zhiqi/console" className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded">
+                        <Link href="/console" className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded">
                             工作台总览
                         </Link>
                         <div className="flex items-center px-3 py-1.5 bg-gray-100 rounded cursor-pointer hover:bg-gray-200">
@@ -219,7 +219,7 @@ export default function ResourceGroupPage() {
                     </div>
                 </div>
                 <div className="flex items-center">
-                    <Link href="/zhiqi/console/cost" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">费用</Link>
+                    <Link href="/console/cost" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">费用</Link>
                     <Link href="#" className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">工单</Link>
                     <button className="relative px-3 py-1.5 text-gray-600 hover:text-gray-800">
                         <Bell className="w-4 h-4" />

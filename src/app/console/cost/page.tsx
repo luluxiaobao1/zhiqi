@@ -8,7 +8,7 @@ export default function CostRedirectPage() {
     
     useEffect(() => {
         // 重定向到 enterprise/cost
-        router.replace("/zhiqi/console/cost/packages");
+        router.replace("/console/cost/packages");
     }, [router]);
     
     return (

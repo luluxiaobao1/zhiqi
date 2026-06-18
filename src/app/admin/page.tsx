@@ -643,7 +643,7 @@ function EnterpriseAdminContent() {
         const isLoggedIn = localStorage.getItem('zhiqi_logged_in');
         if (!isLoggedIn) {
             // 未登录，跳转到登录页
-            window.location.href = '/zhiqi/login';
+            window.location.href = '/login';
             return;
         }
         const userInfoStr = localStorage.getItem('zhiqi_user_info');
@@ -1246,7 +1246,7 @@ function EnterpriseAdminContent() {
         setUserMenuOpen(false);
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
-        window.location.href = '/zhiqi';
+        window.location.href = '/';
     };
 
     // 切换企业
@@ -1352,7 +1352,7 @@ function EnterpriseAdminContent() {
                 className="fixed top-0 left-0 right-0 h-[50px] bg-white z-[1000] flex items-center justify-between px-4 border-b border-gray-100">
                 <div className="flex items-center">
                     {/* Logo */}
-                    <Link href="/zhiqi/console" className="flex items-center mr-4">
+                    <Link href="/console" className="flex items-center mr-4">
                         <div className="flex items-center">
                             {/* 双环图形Logo */}
                             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="mr-1.5">
@@ -1390,7 +1390,7 @@ function EnterpriseAdminContent() {
                     {/* 费用按钮 - 只有主账号和企业管理员可见 */}
                     {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
                         <a
-                            href="/zhiqi/console/cost"
+                            href="/console/cost"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">费用
@@ -1445,7 +1445,7 @@ function EnterpriseAdminContent() {
                                         <button
                                             onClick={() => {
                                                 setUserMenuOpen(false);
-                                                window.open('/zhiqi/console/organization', '_blank');
+                                                window.open('/console/organization', '_blank');
                                             }}
                                             className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                         >

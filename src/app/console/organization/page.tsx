@@ -217,7 +217,7 @@ export default function OrganizationPage() {
     useEffect(() => {
         const isLoggedIn = localStorage.getItem('zhiqi_logged_in');
         if (!isLoggedIn) {
-            router.push('/zhiqi/login');
+            router.push('/login');
             return;
         }
         const userInfoStr = localStorage.getItem('zhiqi_user_info');
@@ -255,7 +255,7 @@ export default function OrganizationPage() {
     const handleLogout = () => {
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
-        window.location.href = '/zhiqi';
+        window.location.href = '/';
     };
 
     // 切换组织节点展开状态
@@ -770,7 +770,7 @@ export default function OrganizationPage() {
             <header className="fixed top-0 left-0 right-0 h-[50px] bg-white z-[1000] flex items-center justify-between px-4 border-b border-gray-100">
                 <div className="flex items-center">
                     {/* Logo */}
-                    <Link href="/zhiqi/console" className="flex items-center mr-4">
+                    <Link href="/console" className="flex items-center mr-4">
                         <div className="flex items-center">
                             {/* 双环图形Logo */}
                             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="mr-1.5">
@@ -804,7 +804,7 @@ export default function OrganizationPage() {
                 <div className="flex items-center">
                     {/* 功能入口 */}
                     <a
-                        href="/zhiqi/console/cost"
+                        href="/console/cost"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">费用
@@ -849,7 +849,7 @@ export default function OrganizationPage() {
                                     <button
                                         onClick={() => {
                                             setUserMenuOpen(false);
-                                            window.open('/zhiqi/console/organization', '_blank');
+                                            window.open('/console/organization', '_blank');
                                         }}
                                         className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                     >
@@ -1363,7 +1363,7 @@ export default function OrganizationPage() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button onClick={() => router.push('/zhiqi/console')}>返回控制台</Button>
+                        <Button onClick={() => router.push('/console')}>返回控制台</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 // 企业入口页面地址
-const ENTERPRISE_URL = "/zhiqi/console";
+const ENTERPRISE_URL = "/console";
 
 export default function ZhiqiOfficialPage() {
     const router = useRouter();
@@ -55,7 +55,7 @@ export default function ZhiqiOfficialPage() {
         if (isLoggedIn) {
             window.location.href = ENTERPRISE_URL;
         } else {
-            router.push("/zhiqi/login");
+            router.push("/login");
         }
     };
 
@@ -185,7 +185,7 @@ export default function ZhiqiOfficialPage() {
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         {/* Logo */}
-                        <Link href="/zhiqi" className="flex items-center gap-2.5">
+                        <Link href="/" className="flex items-center gap-2.5">
                             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
                                 <Sparkles className="w-4 h-4 text-white" />
                             </div>
@@ -228,7 +228,7 @@ export default function ZhiqiOfficialPage() {
                             ) : (
                                 <>
                                     <button
-                                        onClick={() => router.push("/zhiqi/login")}
+                                        onClick={() => router.push("/login")}
                                         className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                                     >
                                         登录
@@ -266,7 +266,7 @@ export default function ZhiqiOfficialPage() {
                                     </>
                                 ) : (
                                     <>
-                                        <button onClick={() => router.push("/zhiqi/login")} className="block w-full text-center py-2 text-gray-600 text-sm">登录</button>
+                                        <button onClick={() => router.push("/login")} className="block w-full text-center py-2 text-gray-600 text-sm">登录</button>
                                         <button onClick={handleStartOrLogin} className="block w-full text-center py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">免费开始</button>
                                     </>
                                 )}

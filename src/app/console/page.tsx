@@ -997,7 +997,7 @@ function EnterprisePageContent() {
         const isLoggedIn = localStorage.getItem('zhiqi_logged_in');
         if (!isLoggedIn) {
             // 未登录，跳转到登录页
-            window.location.href = '/zhiqi/login';
+            window.location.href = '/login';
             return;
         }
         const userInfoStr = localStorage.getItem('zhiqi_user_info');
@@ -1028,7 +1028,7 @@ function EnterprisePageContent() {
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
         // 跳转到智企官网页面
-        window.location.href = '/zhiqi';
+        window.location.href = '/';
     };
 
     // 切换企业时检查当前菜单是否可见
@@ -1499,7 +1499,7 @@ function EnterprisePageContent() {
                         <span className="text-sm text-amber-800">可在管理后台授权企业成员使用，支持给每个成员设置消费限额</span>
                     </div>
                     <button 
-                        onClick={() => window.open('/zhiqi/admin?tab=members', '_blank')}
+                        onClick={() => window.open('/admin?tab=members', '_blank')}
                         className="px-3 py-1 bg-amber-500 text-white text-sm rounded hover:bg-amber-600 transition-colors"
                     >
                         去设置
@@ -2054,7 +2054,7 @@ function EnterprisePageContent() {
                                                 您的配额已用尽，为了避免影响使用，请尽快
                                                 <button 
                                                     onClick={() => {
-                                                        window.open('/zhiqi/admin?tab=members', '_blank');
+                                                        window.open('/admin?tab=members', '_blank');
                                                     }}
                                                     className="text-blue-600 hover:text-blue-700 font-medium"
                                                 >
@@ -2129,7 +2129,7 @@ function EnterprisePageContent() {
                 {/* 顶部导航栏 */}
                 <header className="fixed top-0 left-0 right-0 h-[50px] bg-white z-[1000] flex items-center justify-between px-4 border-b border-gray-100">
                     <div className="flex items-center">
-                        <Link href="/zhiqi/console" className="flex items-center mr-4">
+                        <Link href="/console" className="flex items-center mr-4">
                             <div className="flex items-center">
                                 <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="mr-1.5">
                                     <path d="M14 2C7.37 2 2 7.37 2 14C2 20.63 7.37 26 14 26C16.95 26 19.7 24.95 21.8 23.1L20.3 21.6C18.6 23.1 16.4 24 14 24C8.48 24 4 19.52 4 14C4 8.48 8.48 4 14 4C16.5 4 18.7 4.9 20.4 6.4L21.9 4.9C19.75 2.95 17 2 14 2Z" fill="#1a5cff" />
@@ -2405,7 +2405,7 @@ function EnterprisePageContent() {
                 className="fixed top-0 left-0 right-0 h-[50px] bg-white z-[1000] flex items-center justify-between px-4 border-b border-gray-100">
                 <div className="flex items-center">
                     {/* Logo */}
-                    <Link href="/zhiqi/console" className="flex items-center mr-4">
+                    <Link href="/console" className="flex items-center mr-4">
                         <div className="flex items-center">
                             {/* 双环图形Logo */}
                             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="mr-1.5">
@@ -2442,7 +2442,7 @@ function EnterprisePageContent() {
                     {/* 功能入口 */}
                     {/* 费用按钮 - 所有角色可见 */}
                     <a
-                        href="/zhiqi/console/cost"
+                        href="/console/cost"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">费用
@@ -2494,7 +2494,7 @@ function EnterprisePageContent() {
                                         <button
                                             onClick={() => {
                                                 setUserMenuOpen(false);
-                                                window.open('/zhiqi/console/organization', '_blank');
+                                                window.open('/console/organization', '_blank');
                                             }}
                                             className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 w-full text-left"
                                         >
@@ -2527,7 +2527,7 @@ function EnterprisePageContent() {
                                 <button
                                     key={item.name}
                                     onClick={() => {
-                                        window.open(window.location.origin + '/zhiqi/admin', '_blank');
+                                        window.open(window.location.origin + '/admin', '_blank');
                                     }}
                                     className={`flex items-center px-3 py-2.5 rounded-md mb-1 transition-colors w-full ${activeMenu === item.name ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}>
                                     <item.icon className={`w-5 h-5 ${sidebarCollapsed ? "mx-auto" : "mr-3"}`} />
@@ -4989,7 +4989,7 @@ function EnterprisePageContent() {
                                 <button
                                     onClick={() => {
                                         setQuotaInsufficientDialogOpen(false);
-                                        window.open('/zhiqi/admin?tab=members', '_blank');
+                                        window.open('/admin?tab=members', '_blank');
                                     }}
                                     className="px-4 py-2 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors"
                                 >
