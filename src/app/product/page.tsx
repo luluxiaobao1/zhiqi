@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 // 企业入口页面地址
-const ENTERPRISE_URL = "/console";
+const ENTERPRISE_URL = "/zhiqi/console";
 
 export default function ZhiqiOfficialPage() {
     const router = useRouter();

@@ -997,7 +997,7 @@ function EnterprisePageContent() {
         const isLoggedIn = localStorage.getItem('zhiqi_logged_in');
         if (!isLoggedIn) {
             // 未登录，跳转到登录页
-            window.location.href = '/login';
+            window.location.href = '/zhiqi/login';
             return;
         }
         const userInfoStr = localStorage.getItem('zhiqi_user_info');
@@ -1028,7 +1028,7 @@ function EnterprisePageContent() {
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
         // 跳转到智企官网页面
-        window.location.href = '/';
+        window.location.href = '/zhiqi/';
     };
 
     // 切换企业时检查当前菜单是否可见
@@ -2442,7 +2442,7 @@ function EnterprisePageContent() {
                     {/* 功能入口 */}
                     {/* 费用按钮 - 所有角色可见 */}
                     <a
-                        href="/console/cost"
+                        href="/zhiqi/console/cost"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">费用
