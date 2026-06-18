@@ -1,5 +1,6 @@
 {
     "recommendations": [
-        "codeflow-studio.claude-code-extension"
+        "codeflow-studio.claude-code-extension",
+        "anthropic.claude-code"
     ]
 }

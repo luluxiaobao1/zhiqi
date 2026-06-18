@@ -18,18 +18,9 @@ const nextConfig: NextConfig = {
     ],
   },
   // async redirects() {
-  //   return [
-  //     {
-  //       source: '/enterprise',
-  //       destination: '/zhiqi/console',
-  //       permanent: true, // 308 永久重定向
-  //     },
-  //     {
-  //       source: '/enterprise/admin',
-  //       destination: '/zhiqi/admin',
-  //       permanent: true,
-  //     },
-  //   ];
+  //   // Note: redirects does not work with "output: export"
+  //   // Redirects are handled in server.ts instead
+  //   return [];
   // },
 };
 
