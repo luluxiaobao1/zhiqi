@@ -38,24 +38,25 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Debug - List output directory
-        run: |
-          echo "=== out/ 目录结构 ==="
-          ls -la out/
-          echo "=== 检查 zhiqi 子目录 ==="
-          ls -la out/zhiqi/ 2>/dev/null || echo "无 zhiqi 子目录（正常）"
-
       - name: Restructure for GitHub Pages
         run: |
-          # Next.js with basePath:'/zhiqi' outputs files flat under out/
-          # (e.g. out/index.html, out/_next/..., out/admin/index.html)
-          # Resource references use /zhiqi/_next/..., /zhiqi/admin/ etc.
-          # We need to place files under deploy/zhiqi/ to match the URL structure
-          mkdir -p deploy/zhiqi
-          cp -r out/* deploy/zhiqi/
+          # Next.js 16 with basePath:'/zhiqi' may output files either:
+          # 1. Flat under out/ (out/index.html, out/_next/...)
+          # 2. Under out/zhiqi/ (out/zhiqi/index.html, out/zhiqi/_next/...)
+          # We need to handle both cases to ensure deploy/zhiqi/index.html exists
           
-          # Remove Next.js generated 404.html from zhiqi/ - it contains client-side
-          # routing logic that can cause infinite loops on GitHub Pages
+          if [ -d "out/zhiqi" ]; then
+            echo "检测到 out/zhiqi/ 目录（Next.js 已创建 basePath 子目录）"
+            mkdir -p deploy
+            cp -r out/zhiqi deploy/
+          else
+            echo "未检测到 out/zhiqi/ 目录，手动创建"
+            mkdir -p deploy/zhiqi
+            cp -r out/* deploy/zhiqi/
+          fi
+          
+          # Remove Next.js generated 404.html - it contains client-side routing
+          # logic that can cause infinite loops on GitHub Pages
           rm -f deploy/zhiqi/404.html
           rm -rf deploy/zhiqi/404
           
@@ -76,10 +77,13 @@ jobs:
           # Add .nojekyll to prevent GitHub Pages from ignoring files starting with _
           touch deploy/zhiqi/.nojekyll
           
+          # Verify deployment structure
           echo "=== 部署目录结构 ==="
           ls -la deploy/
           echo "=== zhiqi/ 目录 ==="
-          ls -la deploy/zhiqi/ | head -15
+          ls deploy/zhiqi/ | head -15
+          echo "=== 验证 index.html 存在 ==="
+          ls -la deploy/zhiqi/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
