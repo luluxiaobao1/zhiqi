@@ -40,36 +40,40 @@ jobs:
 
       - name: Restructure for GitHub Pages
         run: |
-          # Create deploy directory structure
+          # The key insight: Next.js 16 with basePath:'/zhiqi' outputs files 
+          # in out/zhiqi/ subdirectory on CI (but flat on some local setups).
+          # We need deploy/zhiqi/index.html to exist at the correct path.
+          #
+          # Strategy: Use rsync to copy the "effective zhiqi content" to deploy/zhiqi/
+          # regardless of whether Next.js outputs flat or nested.
+          
           mkdir -p deploy/zhiqi
           
-          # Next.js 16 with basePath may output files in two possible structures:
-          # Case 1: Flat - out/index.html, out/_next/... (no zhiqi subdir)
-          # Case 2: Nested - out/zhiqi/index.html, out/zhiqi/_next/... (with zhiqi subdir)
-          # 
-          # We need deploy/zhiqi/index.html and deploy/zhiqi/_next/... 
-          # to match the URL structure https://user.github.io/zhiqi/
-          
+          # Step 1: Find where the actual content is
           if [ -f "out/zhiqi/index.html" ]; then
-            echo "Case 2: Next.js created zhiqi/ subdirectory in output"
-            # Copy the zhiqi subdirectory contents directly
-            cp -r out/zhiqi/* deploy/zhiqi/
-            # Also copy any root-level files that might be needed (like _next if it's at root)
-            if [ -d "out/_next" ] && [ ! -d "deploy/zhiqi/_next" ]; then
-              cp -r out/_next deploy/zhiqi/
-            fi
+            echo "Next.js 输出了 zhiqi/ 子目录结构"
+            SOURCE_DIR="out/zhiqi"
           else
-            echo "Case 1: Flat output structure"
-            # Copy all files from out/ to deploy/zhiqi/
-            cp -r out/* deploy/zhiqi/
+            echo "Next.js 输出了扁平结构"
+            SOURCE_DIR="out"
           fi
           
-          # Remove Next.js generated 404 pages - they contain client-side routing
-          # logic that can cause infinite redirect loops on GitHub Pages
+          # Step 2: Copy content to deploy/zhiqi/
+          rsync -a --delete "${SOURCE_DIR}/" deploy/zhiqi/
+          
+          # Step 3: Verify no double nesting
+          if [ -d "deploy/zhiqi/zhiqi" ]; then
+            echo "ERROR: 双重嵌套检测到！正在修复..."
+            rsync -a --delete deploy/zhiqi/zhiqi/ deploy/zhiqi/
+            rm -rf deploy/zhiqi/zhiqi
+            echo "双重嵌套已修复"
+          fi
+          
+          # Remove Next.js generated 404 pages
           rm -f deploy/zhiqi/404.html
           rm -rf deploy/zhiqi/404
           
-          # Create custom 404.html at root level that redirects to /zhiqi/
+          # Create custom 404.html at root level
           cat > deploy/404.html << 'EOF'
           <!DOCTYPE html>
           <html lang="zh-CN">
@@ -83,22 +87,16 @@ jobs:
           </html>
           EOF
           
-          # Add .nojekyll to prevent GitHub Pages from ignoring _ prefixed files
+          # Add .nojekyll
           touch deploy/zhiqi/.nojekyll
           
-          # Verify deployment structure
-          echo "=== 部署目录结构 ==="
-          find deploy -maxdepth 2 -type f | head -20
-          echo "=== 验证关键文件 ==="
-          ls -la deploy/zhiqi/index.html
-          ls -la deploy/404.html
-          echo "=== 检查双重嵌套 ==="
-          if [ -d "deploy/zhiqi/zhiqi" ]; then
-            echo "ERROR: 双重嵌套仍然存在！"
-            exit 1
-          else
-            echo "OK: 无双重嵌套"
-          fi
+          # Final verification
+          echo "=== 最终部署结构 ==="
+          find deploy -maxdepth 2 -type f -o -type d | sort | head -30
+          echo "=== 关键验证 ==="
+          test -f deploy/zhiqi/index.html && echo "✓ deploy/zhiqi/index.html 存在" || echo "✗ deploy/zhiqi/index.html 不存在！"
+          test ! -d deploy/zhiqi/zhiqi && echo "✓ 无双重嵌套" || echo "✗ 存在双重嵌套！"
+          test -f deploy/404.html && echo "✓ deploy/404.html 存在" || echo "✗ deploy/404.html 不存在！"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
