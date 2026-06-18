@@ -32,18 +32,26 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Add .nojekyll to allow _next directory
+      - name: Restructure for GitHub Pages
         run: |
-          # If Next.js created zhiqi/ subdir, add .nojekyll there
-          if [ -d "out/zhiqi" ]; then
-            touch out/zhiqi/.nojekyll
-          else
-            touch out/.nojekyll
-          fi
-          # Copy custom 404.html to out root (replacing Next.js generated one)
-          rm -f out/404.html
-          rm -rf out/404
-          cat > out/404.html << 'EOF'
+          # Next.js with basePath:'/zhiqi' outputs flat structure:
+          # out/index.html, out/_next/..., out/admin/..., etc.
+          # But resource paths in HTML reference /zhiqi/_next/..., /zhiqi/admin/..., etc.
+          # GitHub Pages URL: https://user.github.io/zhiqi/
+          # So we need: gh-pages/zhiqi/index.html, gh-pages/zhiqi/_next/..., etc.
+          
+          mkdir -p deploy/zhiqi
+          cp -r out/* deploy/zhiqi/
+          
+          # Remove Next.js generated 404 (contains client-side routing that causes loops)
+          rm -f deploy/zhiqi/404.html
+          rm -rf deploy/zhiqi/404
+          
+          # Add .nojekyll to allow _next directory
+          touch deploy/zhiqi/.nojekyll
+          
+          # Create custom 404.html at root level
+          cat > deploy/404.html << 'EOF'
           <!DOCTYPE html>
           <html lang="zh-CN">
           <head>
@@ -55,9 +63,15 @@ jobs:
           </body>
           </html>
           EOF
+          
+          # Verify
+          echo "=== 部署结构 ==="
+          ls deploy/
+          ls deploy/zhiqi/ | head -10
+          test -f deploy/zhiqi/index.html && echo "✓ index.html 存在" || echo "✗ index.html 不存在"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
+          publish_dir: ./deploy
