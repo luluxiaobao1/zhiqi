@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   output: 'export',
   basePath: '/zhiqi',
+  trailingSlash: true,
   allowedDevOrigins: ['*.dev.coze.site'],
   images: {
     unoptimized: true,

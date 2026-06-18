@@ -40,8 +40,13 @@ jobs:
 
       - name: Restructure for GitHub Pages
         run: |
+          # Next.js with basePath:'/zhiqi' outputs flat structure under out/
+          # but resource paths reference /zhiqi/_next/..., so we need to
+          # place everything under deploy/zhiqi/ to match the URL structure
           mkdir -p deploy/zhiqi
           cp -r out/* deploy/zhiqi/
+          # Remove Next.js generated 404.html from zhiqi/ to avoid client-side routing loops
+          rm -f deploy/zhiqi/404.html
           # 使用自定义404页面，重定向到/zhiqi/
           cat > deploy/404.html << 'EOF'
           <!DOCTYPE html>
