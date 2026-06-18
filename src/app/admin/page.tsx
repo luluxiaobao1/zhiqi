@@ -2378,7 +2378,7 @@ function EnterpriseAdminContent() {
                                 <p className="mt-1 text-xs text-gray-400 text-right">{quotaName.length}/100</p>
                             </div>
 
-                            {/* 选择成员方式（拍平：全部成员、选组织、选成员、选角色） */}
+                            {/* 选择成员方式 */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     选择成员 <span className="text-red-500">*</span>
