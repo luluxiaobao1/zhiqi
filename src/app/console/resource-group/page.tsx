@@ -173,7 +173,7 @@ export default function ResourceGroupPage() {
     const handleLogout = () => {
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
-        window.location.href = '/';
+        window.location.href = '/zhiqi/';
     };
 
     // 过滤资源组

@@ -32,21 +32,27 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Prepare for GitHub Pages
+      - name: Restructure for GitHub Pages
         run: |
-          # Next.js output: out/index.html, out/_next/..., out/admin/..., etc.
-          # GitHub Pages URL: https://luluxiaobao1.github.io/zhiqi/
-          # Since repo name is "zhiqi", paths like /_next/... resolve correctly.
+          # Next.js with basePath:'/zhiqi' outputs:
+          # out/index.html, out/_next/..., out/admin/..., etc.
+          # Resource paths in HTML reference /zhiqi/_next/..., /zhiqi/admin/..., etc.
+          # GitHub Pages URL: https://user.github.io/zhiqi/
+          # We need: deploy/zhiqi/index.html, deploy/zhiqi/_next/..., etc.
           
-          # Remove Next.js generated 404 (contains client-side routing that causes loops)
-          rm -f out/404.html
-          rm -rf out/404
+          mkdir -p deploy/zhiqi
+          cp -r out/* deploy/zhiqi/
+          
+          # CRITICAL: Remove Next.js generated 404.html
+          # It contains client-side routing scripts that cause infinite redirect loops on GitHub Pages
+          rm -f deploy/zhiqi/404.html
+          rm -rf deploy/zhiqi/404
           
           # Add .nojekyll to allow _next directory
-          touch out/.nojekyll
+          touch deploy/zhiqi/.nojekyll
           
-          # Create custom 404.html that redirects to home
-          cat > out/404.html << 'EOF'
+          # Create a simple static 404.html at root level (no JS, no client routing)
+          cat > deploy/404.html << 'EOF'
           <!DOCTYPE html>
           <html lang="zh-CN">
           <head>
@@ -59,13 +65,29 @@ jobs:
           </html>
           EOF
           
+          # Create root index.html that redirects to basePath
+          cat > deploy/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="refresh" content="0;url=/zhiqi/">
+          </head>
+          <body>
+            <p>Redirecting to <a href="/zhiqi/">application</a>...</p>
+          </body>
+          </html>
+          EOF
+          
           # Verify
           echo "=== 部署结构 ==="
-          ls out/ | head -15
-          test -f out/index.html && echo "✓ index.html 存在" || echo "✗ index.html 不存在"
+          ls deploy/
+          ls deploy/zhiqi/ | head -10
+          test -f deploy/zhiqi/index.html && echo "✓ index.html 存在" || echo "✗ index.html 不存在"
+          test ! -f deploy/zhiqi/404.html && echo "✓ 404.html 已删除" || echo "✗ 404.html 未删除"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
+          publish_dir: ./deploy

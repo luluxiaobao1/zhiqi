@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 // 企业入口页面地址
-const ENTERPRISE_URL = "/console";
+const ENTERPRISE_URL = "/zhiqi/console";
 
 // 测试账号列表
 const TEST_ACCOUNTS = [

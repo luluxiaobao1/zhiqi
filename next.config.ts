@@ -1,12 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // outputFileTracingRoot: path.resolve(__dirname, '../../'),  // Uncomment and add 'import path from "path"' if needed
-  /* config options here */
   output: 'export',
-  // basePath is removed - resource paths are rewritten during deploy
-  // basePath: '/zhiqi',
-  trailingSlash: true,
+  basePath: '/zhiqi',
+  // trailingSlash removed to prevent redirect loops on GitHub Pages
   allowedDevOrigins: ['*.dev.coze.site'],
   images: {
     unoptimized: true,
@@ -18,11 +15,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // async redirects() {
-  //   // Note: redirects does not work with "output: export"
-  //   // Redirects are handled in server.ts instead
-  //   return [];
-  // },
 };
 
 export default nextConfig;

@@ -643,7 +643,7 @@ function EnterpriseAdminContent() {
         const isLoggedIn = localStorage.getItem('zhiqi_logged_in');
         if (!isLoggedIn) {
             // 未登录，跳转到登录页
-            window.location.href = '/login';
+            window.location.href = '/zhiqi/login';
             return;
         }
         const userInfoStr = localStorage.getItem('zhiqi_user_info');
@@ -1246,7 +1246,7 @@ function EnterpriseAdminContent() {
         setUserMenuOpen(false);
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
-        window.location.href = '/';
+        window.location.href = '/zhiqi/';
     };
 
     // 切换企业
@@ -1390,7 +1390,7 @@ function EnterpriseAdminContent() {
                     {/* 费用按钮 - 只有主账号和企业管理员可见 */}
                     {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
                         <a
-                            href="/console/cost"
+                            href="/zhiqi/console/cost"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">费用

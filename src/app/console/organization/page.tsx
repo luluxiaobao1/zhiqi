@@ -255,7 +255,7 @@ export default function OrganizationPage() {
     const handleLogout = () => {
         localStorage.removeItem('zhiqi_logged_in');
         localStorage.removeItem('zhiqi_user_info');
-        window.location.href = '/';
+        window.location.href = '/zhiqi/';
     };
 
     // 切换组织节点展开状态
@@ -804,7 +804,7 @@ export default function OrganizationPage() {
                 <div className="flex items-center">
                     {/* 功能入口 */}
                     <a
-                        href="/console/cost"
+                        href="/zhiqi/console/cost"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">费用
