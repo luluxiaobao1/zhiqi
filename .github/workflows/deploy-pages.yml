@@ -33,21 +33,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --include=dev
 
-      - name: Build
-        run: pnpm run build
+      - name: Build Next.js static export
+        run: pnpm next build
         env:
           NODE_ENV: production
 
+      - name: Debug - List output directory
+        run: |
+          echo "=== out/ 目录结构 ==="
+          ls -la out/
+          echo "=== 检查 zhiqi 子目录 ==="
+          ls -la out/zhiqi/ 2>/dev/null || echo "无 zhiqi 子目录（正常）"
+
       - name: Restructure for GitHub Pages
         run: |
-          # Next.js with basePath:'/zhiqi' outputs flat structure under out/
-          # but resource paths reference /zhiqi/_next/..., so we need to
-          # place everything under deploy/zhiqi/ to match the URL structure
+          # Next.js with basePath:'/zhiqi' outputs files flat under out/
+          # (e.g. out/index.html, out/_next/..., out/admin/index.html)
+          # Resource references use /zhiqi/_next/..., /zhiqi/admin/ etc.
+          # We need to place files under deploy/zhiqi/ to match the URL structure
           mkdir -p deploy/zhiqi
           cp -r out/* deploy/zhiqi/
-          # Remove Next.js generated 404.html from zhiqi/ to avoid client-side routing loops
+          
+          # Remove Next.js generated 404.html from zhiqi/ - it contains client-side
+          # routing logic that can cause infinite loops on GitHub Pages
           rm -f deploy/zhiqi/404.html
-          # 使用自定义404页面，重定向到/zhiqi/
+          rm -rf deploy/zhiqi/404
+          
+          # Create custom 404.html at root level that redirects to /zhiqi/
           cat > deploy/404.html << 'EOF'
           <!DOCTYPE html>
           <html lang="zh-CN">
@@ -60,7 +72,14 @@ jobs:
           </body>
           </html>
           EOF
+          
+          # Add .nojekyll to prevent GitHub Pages from ignoring files starting with _
           touch deploy/zhiqi/.nojekyll
+          
+          echo "=== 部署目录结构 ==="
+          ls -la deploy/
+          echo "=== zhiqi/ 目录 ==="
+          ls -la deploy/zhiqi/ | head -15
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
