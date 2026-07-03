@@ -175,9 +175,78 @@ const ALL_MODELS = [
     { id: 'kimi', name: 'Kimi', description: '月之暗面长文本模型' },
 ];
 
+// 加油包配置行类型（积分额度 + 标准价，标准价 = 积分数/100 * 单价）
+type AddonConfigRow = {
+    points: number | null;   // 积分额度
+    price: number | null;    // 标准价（自动计算，可修改）
+};
+
+// 加油包类型
+type AddonPackage = {
+    id: number;
+    name: string;            // 加油包名称
+    identifier: string;      // 加油包标识
+    product: string;         // 所属产品：ai-plan
+    addonType: "personal" | "org"; // 个人加油包(账户配额支付) / 组织加油包(结算单元支付)
+    unitPrice: number | null;   // 官方标准价（元/100积分）
+    costPrice: number | null;   // 成本价（元/100积分）
+    officialDiscount: number | null;
+    vipDiscount: number | null;
+    svipDiscount: number | null;
+    minDiscount: number | null; // 最低折扣
+    configs: AddonConfigRow[];  // 加油包配置
+    supportCustom: boolean;     // 是否支持自定义
+    status: "active" | "inactive";
+};
+
+// 加油包初始数据（对齐附件示例）
+const initialAddonData: AddonPackage[] = [
+    {
+        id: 1,
+        name: "个人加油包",
+        identifier: "personal_jiayoubao",
+        product: "ai-plan",
+        addonType: "personal",
+        unitPrice: 1,
+        costPrice: 0.8,
+        officialDiscount: 10,
+        vipDiscount: 9.5,
+        svipDiscount: 9,
+        minDiscount: 8.5,
+        configs: [
+            { points: 1000, price: 10 },
+            { points: 1000, price: 10 },
+            { points: 1000, price: 10 },
+        ],
+        supportCustom: true,
+        status: "active",
+    },
+    {
+        id: 2,
+        name: "组织加油包",
+        identifier: "org_jiayoubao",
+        product: "ai-plan",
+        addonType: "org",
+        unitPrice: 1,
+        costPrice: 0.8,
+        officialDiscount: 10,
+        vipDiscount: 9.5,
+        svipDiscount: 9,
+        minDiscount: 8.5,
+        configs: [
+            { points: 1000, price: 10 },
+            { points: 1000, price: 10 },
+            { points: 1000, price: 10 },
+        ],
+        supportCustom: false,
+        status: "inactive",
+    },
+];
+
 // Tab配置
 const adminTabs = [
     { id: "packages", name: "套餐管理", icon: "package" },
+    { id: "addon", name: "加油包", icon: "fuel" },
     { id: "models", name: "AI计划管理", icon: "cpu" },
 ];
 
@@ -212,6 +281,12 @@ const getTabIcon = (icon: string, className: string = "w-5 h-5") => {
             return (
                 <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            );
+        case "fuel":
+            return (
+                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 20h10M6 20V6a2 2 0 012-2h4a2 2 0 012 2v14M14 9h2.5a1.5 1.5 0 011.5 1.5V16a1.5 1.5 0 003 0V8l-2.5-2.5M9 9h4" />
                 </svg>
             );
         default:
@@ -671,6 +746,128 @@ export default function AdminPage() {
             return matchStatus && matchName && matchType;
         });
     }, [packagesData, packageStatusFilter, packageNameSearch, packageTypeFilter]);
+
+    // ============ 加油包相关状态 ============
+    const [addonData, setAddonData] = useState<AddonPackage[]>(initialAddonData); // 加油包列表数据
+    const [addonNameSearch, setAddonNameSearch] = useState(""); // 加油包名称/标识搜索
+    const [addonProductFilter, setAddonProductFilter] = useState("all"); // 所属产品筛选
+    const [addonStatusFilter, setAddonStatusFilter] = useState("all"); // 上架状态筛选
+    const [addonDialogOpen, setAddonDialogOpen] = useState(false); // 编辑加油包侧边弹窗
+    const [editingAddon, setEditingAddon] = useState<AddonPackage | null>(null); // 正在编辑的加油包
+    const [toggleAddonConfirm, setToggleAddonConfirm] = useState<{ id: number; name: string; action: "上架" | "下架"; newStatus: "active" | "inactive" } | null>(null);
+    const [addonForm, setAddonForm] = useState<AddonPackage>({
+        id: 0,
+        name: "",
+        identifier: "",
+        product: "ai-plan",
+        addonType: "personal",
+        unitPrice: null,
+        costPrice: null,
+        officialDiscount: null,
+        vipDiscount: null,
+        svipDiscount: null,
+        minDiscount: null,
+        configs: [{ points: null, price: null }],
+        supportCustom: false,
+        status: "inactive",
+    });
+
+    // 过滤加油包列表
+    const filteredAddons = useMemo(() => {
+        return addonData.filter(item => {
+            const matchName = addonNameSearch === "" ||
+                item.name.toLowerCase().includes(addonNameSearch.toLowerCase()) ||
+                item.identifier.toLowerCase().includes(addonNameSearch.toLowerCase());
+            const matchProduct = addonProductFilter === "all" || item.product === addonProductFilter;
+            const matchStatus = addonStatusFilter === "all" || item.status === addonStatusFilter;
+            return matchName && matchProduct && matchStatus;
+        });
+    }, [addonData, addonNameSearch, addonProductFilter, addonStatusFilter]);
+
+    // 根据积分额度和单价自动计算标准价：标准价 = 积分数/100 * 单价
+    const calcAddonConfigPrice = (points: number | null, unitPrice: number | null): number | null => {
+        if (points == null || unitPrice == null) return null;
+        return Math.round((points / 100) * unitPrice * 100) / 100;
+    };
+
+    // 打开编辑加油包弹窗
+    const handleEditAddon = (addon: AddonPackage) => {
+        setEditingAddon(addon);
+        setAddonForm({
+            ...addon,
+            configs: addon.configs.length > 0
+                ? addon.configs.map(c => ({ ...c }))
+                : [{ points: null, price: null }],
+        });
+        setAddonDialogOpen(true);
+    };
+
+    // 关闭加油包弹窗
+    const handleCloseAddonDialog = () => {
+        setAddonDialogOpen(false);
+        setEditingAddon(null);
+    };
+
+    // 修改加油包配置行（积分额度变化时自动重算标准价）
+    const handleAddonConfigChange = (index: number, field: "points" | "price", value: number | null) => {
+        setAddonForm(prev => {
+            const configs = prev.configs.map((c, i) => {
+                if (i !== index) return c;
+                if (field === "points") {
+                    return { points: value, price: calcAddonConfigPrice(value, prev.unitPrice) };
+                }
+                return { ...c, price: value };
+            });
+            return { ...prev, configs };
+        });
+    };
+
+    // 单价变化时，重算所有配置行的标准价
+    const handleAddonUnitPriceChange = (value: number | null) => {
+        setAddonForm(prev => ({
+            ...prev,
+            unitPrice: value,
+            configs: prev.configs.map(c => ({ ...c, price: calcAddonConfigPrice(c.points, value) })),
+        }));
+    };
+
+    // 添加加油包配置行
+    const handleAddAddonConfig = () => {
+        setAddonForm(prev => ({ ...prev, configs: [...prev.configs, { points: null, price: null }] }));
+    };
+
+    // 移除加油包配置行
+    const handleRemoveAddonConfig = (index: number) => {
+        setAddonForm(prev => ({ ...prev, configs: prev.configs.filter((_, i) => i !== index) }));
+    };
+
+    // 保存加油包
+    const handleSaveAddon = () => {
+        if (editingAddon) {
+            setAddonData(prev => prev.map(item =>
+                item.id === editingAddon.id ? { ...addonForm, id: editingAddon.id } : item
+            ));
+        } else {
+            setAddonData(prev => [{ ...addonForm, id: Date.now() }, ...prev]);
+        }
+        handleCloseAddonDialog();
+    };
+
+    // 打开加油包上/下架确认
+    const handleToggleAddonStatus = (id: number, name: string, newStatus: "active" | "inactive") => {
+        const action = newStatus === "active" ? "上架" : "下架";
+        setToggleAddonConfirm({ id, name, action, newStatus });
+    };
+
+    // 确认加油包上/下架
+    const handleConfirmToggleAddon = () => {
+        if (toggleAddonConfirm) {
+            setAddonData(prev => prev.map(item =>
+                item.id === toggleAddonConfirm.id ? { ...item, status: toggleAddonConfirm.newStatus } : item
+            ));
+            setToggleAddonConfirm(null);
+        }
+    };
 
     // 打开成员管理弹窗
     const handleManageMembers = (tenant: typeof tenantsData[0]) => {
@@ -3795,6 +3992,172 @@ export default function AdminPage() {
                         </div>
                     )}
 
+                    {/* 加油包 Tab 内容 */}
+                    {activeTab === "addon" && (
+                        <div className="p-6">
+                            {/* 面包屑 */}
+                            <div className="flex items-center gap-2 mb-6 text-sm">
+                                <span className="text-gray-500">套餐管理</span>
+                                <span className="text-gray-300">/</span>
+                                <span className="text-gray-900 font-medium">加油包</span>
+                            </div>
+
+                            {/* 操作栏 */}
+                            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="relative">
+                                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                            <input
+                                                type="text"
+                                                placeholder="搜索加油包名称或标识"
+                                                value={addonNameSearch}
+                                                onChange={(e) => setAddonNameSearch(e.target.value)}
+                                                className="border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500 w-56"
+                                            />
+                                        </div>
+                                        <select
+                                            value={addonProductFilter}
+                                            onChange={(e) => setAddonProductFilter(e.target.value)}
+                                            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">全部产品</option>
+                                            <option value="ai-plan">AI计划</option>
+                                        </select>
+                                        <select
+                                            value={addonStatusFilter}
+                                            onChange={(e) => setAddonStatusFilter(e.target.value)}
+                                            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="all">全部状态</option>
+                                            <option value="active">已上架</option>
+                                            <option value="inactive">已下架</option>
+                                        </select>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setEditingAddon(null);
+                                            setAddonForm({
+                                                id: 0,
+                                                name: "",
+                                                identifier: "",
+                                                product: "ai-plan",
+                                                addonType: "personal",
+                                                unitPrice: null,
+                                                costPrice: null,
+                                                officialDiscount: null,
+                                                vipDiscount: null,
+                                                svipDiscount: null,
+                                                minDiscount: null,
+                                                configs: [{ points: null, price: null }],
+                                                supportCustom: false,
+                                                status: "inactive",
+                                            });
+                                            setAddonDialogOpen(true);
+                                        }}
+                                        className="px-4 py-2 bg-[#006bff] text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        创建加油包
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 加油包列表 */}
+                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-200">
+                                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">加油包</th>
+                                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">所属产品</th>
+                                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">加油包配置</th>
+                                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">上架状态</th>
+                                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">编辑</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredAddons.map((addon) => (
+                                            <tr key={addon.id} className="border-b border-gray-100 hover:bg-gray-50 align-top">
+                                                <td className="py-3 px-4">
+                                                    <div className="font-medium text-gray-900">{addon.name}</div>
+                                                    <div className="text-xs text-gray-400 font-mono mt-0.5">{addon.identifier}</div>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <span className="inline-block px-2 py-1 text-xs rounded bg-blue-50 text-blue-700">AI计划</span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <div className="text-sm text-gray-600 space-y-0.5">
+                                                        {addon.configs.map((c, i) => (
+                                                            <div key={i}>配置{i + 1}：{c.points ?? "-"}</div>
+                                                        ))}
+                                                        <div className={addon.supportCustom ? "text-gray-600" : "text-gray-400"}>
+                                                            {addon.supportCustom ? "支持自定义" : "无自定义"}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <span className={`inline-block px-2 py-1 text-xs rounded ${
+                                                        addon.status === "active"
+                                                            ? "bg-green-50 text-green-700"
+                                                            : "bg-gray-100 text-gray-500"
+                                                    }`}>
+                                                        {addon.status === "active" ? "已上架" : "已下架"}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <div className="flex items-center gap-3">
+                                                        {addon.status === "active" ? (
+                                                            <button
+                                                                onClick={() => handleToggleAddonStatus(addon.id, addon.name, "inactive")}
+                                                                className="text-red-500 hover:text-red-600 text-sm"
+                                                            >
+                                                                下架
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleToggleAddonStatus(addon.id, addon.name, "active")}
+                                                                className="text-green-600 hover:text-green-700 text-sm"
+                                                            >
+                                                                上架
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleEditAddon(addon)}
+                                                            className="text-blue-600 hover:text-blue-700 text-sm"
+                                                        >
+                                                            编辑
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {filteredAddons.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="py-10 text-center text-sm text-gray-400">暂无加油包数据</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
+                                    <span>共 {filteredAddons.length} 条，第 1/1 页</span>
+                                    <div className="flex items-center gap-2">
+                                        <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded text-gray-400">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                                        </button>
+                                        <span className="w-7 h-7 flex items-center justify-center border border-[#006bff] text-[#006bff] rounded">1</span>
+                                        <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded text-gray-400">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* AI计划管理 Tab 内容 */}
                     {activeTab === "models" && (
                         <div className="p-6">
@@ -4336,6 +4699,351 @@ export default function AdminPage() {
                                 }`}
                             >
                                 确定
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 编辑加油包抽屉 */}
+            {addonDialogOpen && (
+                <div className="fixed inset-0 z-[100]">
+                    <div className="absolute inset-0 bg-black/50" onClick={handleCloseAddonDialog} />
+                    <div className="absolute right-0 top-0 bottom-0 w-[560px] max-w-[90vw] bg-white shadow-xl flex flex-col">
+                        {/* 抽屉头部 */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                {editingAddon ? "编辑加油包" : "创建加油包"}
+                            </h3>
+                            <button
+                                onClick={handleCloseAddonDialog}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* 抽屉内容 */}
+                        <div className="flex-1 overflow-auto px-6 py-5 space-y-5">
+                            {/* 加油包名称 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <span className="text-red-500">*</span> 加油包名称
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addonForm.name}
+                                    onChange={(e) => setAddonForm({ ...addonForm, name: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                    placeholder="请输入加油包名称"
+                                />
+                            </div>
+
+                            {/* 加油包标识 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <span className="text-red-500">*</span> 加油包标识
+                                </label>
+                                <input
+                                    type="text"
+                                    value={addonForm.identifier}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/[^a-z0-9\-_]/g, "");
+                                        setAddonForm({ ...addonForm, identifier: val });
+                                    }}
+                                    disabled={!!editingAddon}
+                                    className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none ${editingAddon ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "focus:border-blue-500"}`}
+                                    placeholder="仅支持小写字母、数字、-、_，如 ai_jiayoubao"
+                                />
+                            </div>
+
+                            {/* 所属产品 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <span className="text-red-500">*</span> 所属产品
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="addonProduct"
+                                        checked={addonForm.product === "ai-plan"}
+                                        onChange={() => setAddonForm({ ...addonForm, product: "ai-plan" })}
+                                        className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
+                                    />
+                                    <span className="ml-2 text-sm text-gray-700">AI计划</span>
+                                </label>
+                            </div>
+
+                            {/* 加油包类型 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <span className="text-red-500">*</span> 加油包类型
+                                </label>
+                                <div className="flex items-center gap-6">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="addonType"
+                                            checked={addonForm.addonType === "personal"}
+                                            onChange={() => setAddonForm({ ...addonForm, addonType: "personal" })}
+                                            className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700">个人加油包(账户配额支付)</span>
+                                    </label>
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="addonType"
+                                            checked={addonForm.addonType === "org"}
+                                            onChange={() => setAddonForm({ ...addonForm, addonType: "org" })}
+                                            className="w-4 h-4 text-[#006bff] border-gray-300 focus:ring-[#006bff]"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-700">组织加油包(结算单元支付)</span>
+                                    </label>
+                                </div>
+                                <p className="text-xs text-red-500 mt-1.5">这里设置的是单价/100积分</p>
+                            </div>
+
+                            {/* 官方标准价 & 成本价 */}
+                            <div className="border border-red-200 rounded-lg p-4 grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <span className="text-red-500">*</span> 官方标准价
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={addonForm.unitPrice ?? ""}
+                                            onChange={(e) => handleAddonUnitPriceChange(e.target.value ? Number(e.target.value) : null)}
+                                            className="w-full px-3 py-2 pr-24 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                            placeholder="小数点后两位"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">元/100积分</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <span className="text-red-500">*</span> 成本价
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={addonForm.costPrice ?? ""}
+                                            onChange={(e) => setAddonForm({ ...addonForm, costPrice: e.target.value ? Number(e.target.value) : null })}
+                                            className="w-full px-3 py-2 pr-24 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                            placeholder="小数点后两位"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">元/100积分</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 折扣设置 */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <span className="text-red-500">*</span> 官方折扣
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            max="10"
+                                            value={addonForm.officialDiscount ?? ""}
+                                            onChange={(e) => setAddonForm({ ...addonForm, officialDiscount: e.target.value ? Number(e.target.value) : null })}
+                                            className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                            placeholder="小数点后两位"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">折</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <span className="text-red-500">*</span> VIP折扣
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            max="10"
+                                            value={addonForm.vipDiscount ?? ""}
+                                            onChange={(e) => setAddonForm({ ...addonForm, vipDiscount: e.target.value ? Number(e.target.value) : null })}
+                                            className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                            placeholder="小数点后两位"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">折</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <span className="text-red-500">*</span> SVIP折扣
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            max="10"
+                                            value={addonForm.svipDiscount ?? ""}
+                                            onChange={(e) => setAddonForm({ ...addonForm, svipDiscount: e.target.value ? Number(e.target.value) : null })}
+                                            className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                            placeholder="小数点后两位"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">折</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <span className="text-red-500">*</span> 最低折扣
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            max="10"
+                                            value={addonForm.minDiscount ?? ""}
+                                            onChange={(e) => setAddonForm({ ...addonForm, minDiscount: e.target.value ? Number(e.target.value) : null })}
+                                            className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                            placeholder="小数点后两位"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">折</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 加油包配置 */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    <span className="text-red-500">*</span> 加油包配置
+                                </label>
+                                <div className="space-y-3">
+                                    {addonForm.configs.map((config, index) => (
+                                        <div key={index} className="flex items-center gap-3">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                value={config.points ?? ""}
+                                                onChange={(e) => handleAddonConfigChange(index, "points", e.target.value ? Math.floor(Number(e.target.value)) : null)}
+                                                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                                placeholder="积分额度"
+                                            />
+                                            <div className="relative flex-1">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={config.price ?? ""}
+                                                    onChange={(e) => handleAddonConfigChange(index, "price", e.target.value ? Number(e.target.value) : null)}
+                                                    className="w-full px-3 py-2 pr-8 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                                                    placeholder="自动展示计算的标准价，可修改"
+                                                />
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">元</span>
+                                            </div>
+                                            <button
+                                                onClick={handleAddAddonConfig}
+                                                className="text-[#006bff] hover:text-blue-700 text-sm whitespace-nowrap"
+                                            >
+                                                + 添加
+                                            </button>
+                                            {addonForm.configs.length > 1 && (
+                                                <button
+                                                    onClick={() => handleRemoveAddonConfig(index)}
+                                                    className="text-gray-500 hover:text-red-600 text-sm whitespace-nowrap"
+                                                >
+                                                    移除
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-3 text-xs space-y-0.5">
+                                    <p className="text-gray-500">这里要基于100积分的单价计算标准价</p>
+                                    <p className="text-red-500">标准价=输入的积分数/100*单价</p>
+                                </div>
+                            </div>
+
+                            {/* 支持自定义 */}
+                            <div>
+                                <label className="flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={addonForm.supportCustom}
+                                        onChange={(e) => setAddonForm({ ...addonForm, supportCustom: e.target.checked })}
+                                        className="w-4 h-4 text-[#006bff] rounded border-gray-300 focus:ring-[#006bff]"
+                                    />
+                                    <span className="ml-2 text-sm text-gray-700">支持自定义积分额度</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* 抽屉底部 */}
+                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <button
+                                onClick={handleCloseAddonDialog}
+                                className="px-6 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleSaveAddon}
+                                className="px-6 py-2 bg-[#006bff] text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                            >
+                                保存
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 加油包上/下架确认弹窗 */}
+            {toggleAddonConfirm && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setToggleAddonConfirm(null)} />
+                    <div className="relative bg-white rounded-xl shadow-2xl w-[400px] max-w-[90vw] overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">{toggleAddonConfirm.action}确认</h3>
+                            <button onClick={() => setToggleAddonConfirm(null)} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-gray-900 font-medium mb-2">
+                                确定要{toggleAddonConfirm.action}加油包「{toggleAddonConfirm.name}」吗？
+                            </p>
+                            <p className="text-gray-500 text-sm">
+                                {toggleAddonConfirm.action === "下架"
+                                    ? "下架后该加油包将不再对用户可见，已购买用户不受影响。"
+                                    : "上架后该加油包将对用户可见并开放购买。"}
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <button
+                                onClick={() => setToggleAddonConfirm(null)}
+                                className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleConfirmToggleAddon}
+                                className={`px-4 py-2 rounded-lg text-sm text-white transition-colors ${
+                                    toggleAddonConfirm.action === "下架"
+                                        ? "bg-orange-600 hover:bg-orange-700"
+                                        : "bg-green-600 hover:bg-green-700"
+                                }`}
+                            >
+                                确认{toggleAddonConfirm.action}
                             </button>
                         </div>
                     </div>

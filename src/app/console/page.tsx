@@ -54,6 +54,7 @@ import {
     FlaskConical,
     ExternalLink,
     Package,
+    RefreshCw,
 } from "lucide-react";
 
 import {
@@ -144,6 +145,106 @@ const getFilteredPackages = (role: UserRole, account: string): PurchasedPackage[
     }
     return allPurchasedPackages.filter(pkg => pkg.purchaserAccount === account);
 };
+
+// AI计划-已购套餐数据类型
+type AiPlanPkgStatus = 'active' | 'expired' | 'exhausted';
+
+interface AiPlanQuota {
+    label: string;   // 每五小时额度 / 每周额度 / 每月额度
+    used: number;
+    total: number;
+}
+
+interface AiPlanPurchasedPackage {
+    id: string;
+    name: string;        // 套餐名称（带后缀）
+    typeName: string;    // 套餐类型名
+    quotas: AiPlanQuota[];
+    status: AiPlanPkgStatus;
+    amount: number;      // 金额/月
+    effectTime: string;
+    expireTime: string;
+    intranetOnly: boolean;
+}
+
+// AI计划-已购套餐模拟数据（对应附件图）
+const aiPlanPurchasedPackages: AiPlanPurchasedPackage[] = [
+    {
+        id: "360专用海外高级套餐_hvA8h",
+        name: "360专用海外高级套餐_hvA8h",
+        typeName: "360专用海外高级套餐",
+        quotas: [
+            { label: "每五小时额度", used: 0, total: 20000 },
+            { label: "每周额度", used: 0, total: 40000 },
+            { label: "每月额度", used: 0, total: 80000 },
+        ],
+        status: "active",
+        amount: 800,
+        effectTime: "2026/07/03 12:46:32",
+        expireTime: "2026/08/03 12:46:32",
+        intranetOnly: true,
+    },
+    {
+        id: "体验套餐_9Enig",
+        name: "体验套餐_9Enig",
+        typeName: "通用体验套餐",
+        quotas: [
+            { label: "每五小时额度", used: 0, total: 1000 },
+            { label: "每周额度", used: 0, total: 2000 },
+            { label: "每月额度", used: 0, total: 4000 },
+        ],
+        status: "active",
+        amount: 40,
+        effectTime: "2026/06/26 18:58:22",
+        expireTime: "2026/07/26 18:58:22",
+        intranetOnly: false,
+    },
+    {
+        id: "体验套餐",
+        name: "体验套餐",
+        typeName: "通用体验套餐",
+        quotas: [
+            { label: "每五小时额度", used: 0, total: 10 },
+            { label: "每周额度", used: 0, total: 20 },
+            { label: "每月额度", used: 0, total: 40 },
+        ],
+        status: "active",
+        amount: 36,
+        effectTime: "2026/06/25 15:42:07",
+        expireTime: "2026/07/25 15:42:07",
+        intranetOnly: false,
+    },
+    {
+        id: "体验套餐_5kS5K",
+        name: "体验套餐_5kS5K",
+        typeName: "通用体验套餐",
+        quotas: [
+            { label: "每五小时额度", used: 0, total: 10 },
+            { label: "每周额度", used: 0, total: 20 },
+            { label: "每月额度", used: 0, total: 40 },
+        ],
+        status: "active",
+        amount: 36,
+        effectTime: "2026/06/22 17:05:47",
+        expireTime: "2026/07/22 17:05:47",
+        intranetOnly: false,
+    },
+    {
+        id: "体验套餐_Zx8Qp",
+        name: "体验套餐_Zx8Qp",
+        typeName: "通用体验套餐",
+        quotas: [
+            { label: "每五小时额度", used: 0, total: 10 },
+            { label: "每周额度", used: 0, total: 20 },
+            { label: "每月额度", used: 0, total: 40 },
+        ],
+        status: "active",
+        amount: 36,
+        effectTime: "2026/06/20 09:12:00",
+        expireTime: "2026/07/20 09:12:00",
+        intranetOnly: false,
+    },
+];
 
 // 菜单项定义（带角色权限）
 const allMenuItems = [
@@ -675,6 +776,14 @@ function EnterprisePageContent() {
     const [userAccount, setUserAccount] = useState('');
     const [activeMenu, setActiveMenu] = useState("我的首页");
     const [adminTab, setAdminTab] = useState<"overview" | "members" | "models" | "lobster">("overview");
+    // AI计划 顶部 tab
+    const [aiPlanTab, setAiPlanTab] = useState<"plan" | "purchased" | "stats">("purchased");
+    // AI计划-已购套餐 筛选/搜索/内网开关
+    const [aiPlanFilter, setAiPlanFilter] = useState<"all" | "active" | "expired" | "exhausted">("all");
+    const [aiPlanSearch, setAiPlanSearch] = useState("");
+    const [aiPlanIntranet, setAiPlanIntranet] = useState<Record<string, boolean>>(
+        () => Object.fromEntries(aiPlanPurchasedPackages.map(p => [p.id, p.intranetOnly]))
+    );
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     
     // 读取URL参数，初始化菜单和tab状态
@@ -2808,26 +2917,200 @@ function EnterprisePageContent() {
                     <div className="mb-6">
                         <h1 className="text-xl font-semibold text-gray-800">{activeMenu}</h1>
                     </div>
+
                     {/* 我的首页 - 概览页面 */}
                     {activeMenu === "我的首页" && renderHomePage()}
-                    {}
-                    {activeMenu === "AI计划" && <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 rounded-lg">
-                            <AlertCircle className="w-5 h-5 text-[#006bff] flex-shrink-0" />
-                            <span className="text-sm text-gray-700">AI计划逻辑请见：</span>
-                            <a
-                                href="https://hdgzgm4kjt.coze.site/claw/api"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-[#006bff] hover:underline inline-flex items-center gap-1"
-                            >
-                                https://hdgzgm4kjt.coze.site/claw/api
-                                <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                            <span className="text-sm text-gray-700">，产品：周长江。开发同学只需关注页面里的内容，左侧菜单、顶部导航等样式风格和智企框架保持一致。</span>
+
+                    {/* AI计划 产品控制台 */}
+                    {activeMenu === "AI计划" && (
+                    <div className="bg-white rounded-lg border border-gray-200">
+                        {/* 顶部 Tab 导航 */}
+                        <div className="flex items-center gap-8 px-6 pt-4 border-b border-gray-100">
+                            {[
+                                { id: "plan", name: "AI计划" },
+                                { id: "purchased", name: "已购套餐" },
+                                { id: "stats", name: "使用统计" },
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setAiPlanTab(tab.id as typeof aiPlanTab)}
+                                    className={`pb-3 text-[15px] font-medium transition-colors relative ${
+                                        aiPlanTab === tab.id ? "text-[#006bff]" : "text-gray-600 hover:text-gray-900"
+                                    }`}
+                                >
+                                    {tab.name}
+                                    {aiPlanTab === tab.id && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#006bff] rounded-full" />
+                                    )}
+                                </button>
+                            ))}
                         </div>
-                    </div>}
-                    {}
+
+                        {/* AI计划 Tab */}
+                        {aiPlanTab === "plan" && (
+                            <div className="p-10 text-center text-gray-400 text-sm">AI计划介绍页（略）</div>
+                        )}
+
+                        {/* 使用统计 Tab */}
+                        {aiPlanTab === "stats" && (
+                            <div className="p-10 text-center text-gray-400 text-sm">使用统计页（略）</div>
+                        )}
+
+                        {/* 已购套餐 Tab */}
+                        {aiPlanTab === "purchased" && (
+                        <div className="p-6">
+                            {/* 工具栏 */}
+                            <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+                                <button className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#006bff] text-white text-sm rounded-lg hover:bg-blue-600 transition-colors">
+                                    <Plus className="w-4 h-4" />
+                                    选购套餐
+                                </button>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    {/* 筛选 pills */}
+                                    <div className="inline-flex items-center rounded-lg border border-gray-200 p-0.5">
+                                        {[
+                                            { id: "all", name: "全部" },
+                                            { id: "active", name: "生效中" },
+                                            { id: "expired", name: "已失效" },
+                                            { id: "exhausted", name: "额度耗尽" },
+                                        ].map(f => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => setAiPlanFilter(f.id as typeof aiPlanFilter)}
+                                                className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
+                                                    aiPlanFilter === f.id
+                                                        ? "bg-blue-50 text-[#006bff] font-medium"
+                                                        : "text-gray-600 hover:text-gray-900"
+                                                }`}
+                                            >
+                                                {f.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* 搜索框 */}
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            value={aiPlanSearch}
+                                            onChange={e => setAiPlanSearch(e.target.value)}
+                                            placeholder="搜索套餐名称"
+                                            className="w-56 pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#006bff]"
+                                        />
+                                    </div>
+                                    {/* 刷新 */}
+                                    <button className="w-9 h-9 flex items-center justify-center border border-gray-200 rounded-lg text-gray-500 hover:text-[#006bff] hover:border-[#006bff] transition-colors">
+                                        <RefreshCw className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 表格 */}
+                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                {/* 表头 */}
+                                <div className="grid grid-cols-[1.4fr_2fr_1.6fr_0.9fr_1fr] bg-gray-50 px-5 py-3 text-sm font-medium text-gray-500">
+                                    <div>套餐信息</div>
+                                    <div>额度限额</div>
+                                    <div>状态 / 金额 / 有效期</div>
+                                    <div>仅内网使用</div>
+                                    <div>操作</div>
+                                </div>
+                                {/* 数据行 */}
+                                {(() => {
+                                    const rows = aiPlanPurchasedPackages
+                                        .filter(p => aiPlanFilter === "all" ? true : p.status === aiPlanFilter)
+                                        .filter(p => !aiPlanSearch || p.name.includes(aiPlanSearch) || p.typeName.includes(aiPlanSearch));
+                                    if (rows.length === 0) {
+                                        return <div className="px-5 py-16 text-center text-gray-400 text-sm">暂无数据</div>;
+                                    }
+                                    return rows.map((pkg, idx) => (
+                                        <div
+                                            key={pkg.id}
+                                            className={`grid grid-cols-[1.4fr_2fr_1.6fr_0.9fr_1fr] px-5 py-5 items-center ${idx !== rows.length - 1 ? "border-b border-gray-100" : ""}`}
+                                        >
+                                            {/* 套餐信息 */}
+                                            <div>
+                                                <div className="text-sm font-medium text-gray-800 break-all">{pkg.name}</div>
+                                                <div className="text-xs text-gray-400 mt-1">{pkg.typeName}</div>
+                                            </div>
+                                            {/* 额度限额 */}
+                                            <div className="space-y-2.5 pr-6">
+                                                <div className="text-sm text-gray-700">积分限制</div>
+                                                {pkg.quotas.map(q => {
+                                                    const pct = q.total > 0 ? Math.round((q.used / q.total) * 100) : 0;
+                                                    return (
+                                                        <div key={q.label} className="flex items-center gap-3">
+                                                            <span className="text-xs text-gray-400 w-24 flex-shrink-0">{q.label}:</span>
+                                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-[#006bff] rounded-full" style={{ width: `${pct}%` }} />
+                                                            </div>
+                                                            <span className="text-xs text-gray-500 w-28 text-right flex-shrink-0">
+                                                                {q.used.toLocaleString()}/{q.total.toLocaleString()} ({pct}%)
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {/* 状态/金额/有效期 */}
+                                            <div className="space-y-1.5 text-sm">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-gray-400">状态:</span>
+                                                    {pkg.status === "active" && (
+                                                        <span className="inline-flex items-center gap-1 text-green-600">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />生效中
+                                                        </span>
+                                                    )}
+                                                    {pkg.status === "expired" && (
+                                                        <span className="inline-flex items-center gap-1 text-gray-500">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />已失效
+                                                        </span>
+                                                    )}
+                                                    {pkg.status === "exhausted" && (
+                                                        <span className="inline-flex items-center gap-1 text-orange-500">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />额度耗尽
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-gray-600"><span className="text-gray-400">金额: </span>¥{pkg.amount}/月</div>
+                                                <div className="text-gray-600"><span className="text-gray-400">生效: </span>{pkg.effectTime}</div>
+                                                <div className="text-gray-600"><span className="text-gray-400">到期: </span>{pkg.expireTime}</div>
+                                            </div>
+                                            {/* 仅内网使用 */}
+                                            <div>
+                                                <button
+                                                    onClick={() => setAiPlanIntranet(prev => ({ ...prev, [pkg.id]: !prev[pkg.id] }))}
+                                                    className={`relative w-11 h-6 rounded-full transition-colors ${aiPlanIntranet[pkg.id] ? "bg-[#006bff]" : "bg-gray-300"}`}
+                                                >
+                                                    <span
+                                                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${aiPlanIntranet[pkg.id] ? "translate-x-5" : ""}`}
+                                                    />
+                                                </button>
+                                            </div>
+                                            {/* 操作 */}
+                                            <div className="flex items-center gap-4 text-sm">
+                                                <button className="text-[#006bff] hover:underline">API Key</button>
+                                                <button className="text-[#006bff] hover:underline">模型配置</button>
+                                            </div>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+
+                            {/* 分页 */}
+                            <div className="flex items-center justify-end gap-2 mt-4 text-sm text-gray-500">
+                                <span>共{aiPlanPurchasedPackages.length}条</span>
+                                <button className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-gray-600">
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <button className="w-7 h-7 flex items-center justify-center rounded border border-[#006bff] text-[#006bff]">1</button>
+                                <button className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-gray-600">
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                        )}
+                    </div>
+                    )}
+
                     {/* 管理后台页面 - 主账号和管理员可见 */}
                     {activeMenu === "管理后台" && (currentUserRole === 'owner' || currentUserRole === 'admin') && (
                     <div className="bg-white rounded-lg border border-gray-200">
