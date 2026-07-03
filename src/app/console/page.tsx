@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { withBasePath, navigateTo, openInNewTab } from "@/lib/navigation";
+import DraggableFloatingButton from "@/components/draggable-floating-button";
 import {
     LineChart,
     Line,
@@ -155,11 +156,18 @@ interface AiPlanQuota {
     total: number;
 }
 
+// 加油包额度：所有加油包的使用总量 / 总额度（智企做叠加）
+interface AiPlanAddonQuota {
+    used: number;    // 已使用积分
+    total: number;   // 加油包总额度（已购买加油包积分之和）
+}
+
 interface AiPlanPurchasedPackage {
     id: string;
     name: string;        // 套餐名称（带后缀）
     typeName: string;    // 套餐类型名
     quotas: AiPlanQuota[];
+    addonQuota?: AiPlanAddonQuota; // 加油包额度（购买后展示）
     status: AiPlanPkgStatus;
     amount: number;      // 金额/月
     effectTime: string;
@@ -193,6 +201,8 @@ const aiPlanPurchasedPackages: AiPlanPurchasedPackage[] = [
             { label: "每周额度", used: 0, total: 2000 },
             { label: "每月额度", used: 0, total: 4000 },
         ],
+        // 已购买加油包（50+100=150积分），已使用30
+        addonQuota: { used: 30, total: 150 },
         status: "active",
         amount: 40,
         effectTime: "2026/06/26 18:58:22",
@@ -784,6 +794,39 @@ function EnterprisePageContent() {
     const [aiPlanIntranet, setAiPlanIntranet] = useState<Record<string, boolean>>(
         () => Object.fromEntries(aiPlanPurchasedPackages.map(p => [p.id, p.intranetOnly]))
     );
+    // ===== 购买加油包相关状态 =====
+    // 是否允许个人加油包（account后台配置，(1)允许:展示个人tab (2)不允许:不展示个人tab）
+    const allowPersonalAddon = true;
+    // 加油包积分档位
+    const addonTiers = [
+        { points: 50, price: 45 },
+        { points: 100, price: 95 },
+        { points: 150, price: 145 },
+    ];
+    const [addonDialogOpen, setAddonDialogOpen] = useState(false);
+    const [addonPkg, setAddonPkg] = useState<AiPlanPurchasedPackage | null>(null);
+    const [addonTab, setAddonTab] = useState<"personal" | "org">("personal");
+    const [addonTierIdx, setAddonTierIdx] = useState(0);
+    const [addonSettleUnit, setAddonSettleUnit] = useState("");
+    const [addonConfirmOpen, setAddonConfirmOpen] = useState(false);
+    // 组织加油包场景（演示切换）：true=已绑定结算单元（正常购买流程）；false=未绑定结算单元（提示联系管理员）
+    const [orgSettleBound, setOrgSettleBound] = useState(true);
+    // 个人余额剩余配额（元）
+    const personalRemainQuota = 1700;
+    // 结算单元选项（组织加油包）
+    const settleUnitOptions = [
+        { value: "unit-a", label: "研发部结算单元" },
+        { value: "unit-b", label: "市场部结算单元" },
+        { value: "unit-c", label: "产品部结算单元" },
+    ];
+    // 打开加油包弹窗
+    const openAddonDialog = (pkg: AiPlanPurchasedPackage) => {
+        setAddonPkg(pkg);
+        setAddonTab(allowPersonalAddon ? "personal" : "org");
+        setAddonTierIdx(0);
+        setAddonSettleUnit("");
+        setAddonDialogOpen(true);
+    };
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     
     // 读取URL参数，初始化菜单和tab状态
@@ -799,6 +842,15 @@ function EnterprisePageContent() {
                 setAdminTab("models");
             } else if (tabParam === 'lobster') {
                 setAdminTab("lobster");
+            }
+        } else if (menuParam === 'aiplan' || menuParam === 'AI计划') {
+            setActiveMenu("AI计划");
+            if (tabParam === 'plan') {
+                setAiPlanTab("plan");
+            } else if (tabParam === 'stats') {
+                setAiPlanTab("stats");
+            } else {
+                setAiPlanTab("purchased");
             }
         }
     }, [searchParams]);
@@ -2549,7 +2601,6 @@ function EnterprisePageContent() {
                     </div>
                 </div>
                 <div className="flex items-center">
-                    {/* 功能入口 */}
                     {/* 费用按钮 - 所有角色可见 */}
                     <a
                         href={withBasePath('/console/cost')}
@@ -3049,6 +3100,22 @@ function EnterprisePageContent() {
                                                         </div>
                                                     );
                                                 })}
+                                                {/* 加油包额度：购买成功后展示，所有加油包使用总量/总额度 */}
+                                                {pkg.addonQuota && (() => {
+                                                    const a = pkg.addonQuota!;
+                                                    const pct = a.total > 0 ? Math.round((a.used / a.total) * 100) : 0;
+                                                    return (
+                                                        <div className="flex items-center gap-3 pt-2 mt-1 border-t border-dashed border-gray-200">
+                                                            <span className="text-xs text-orange-500 w-24 flex-shrink-0">加油包额度:</span>
+                                                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-orange-500 rounded-full" style={{ width: `${pct}%` }} />
+                                                            </div>
+                                                            <span className="text-xs text-gray-500 w-28 text-right flex-shrink-0">
+                                                                {a.used.toLocaleString()}/{a.total.toLocaleString()} ({pct}%)
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                             {/* 状态/金额/有效期 */}
                                             <div className="space-y-1.5 text-sm">
@@ -3089,6 +3156,18 @@ function EnterprisePageContent() {
                                             <div className="flex items-center gap-4 text-sm">
                                                 <button className="text-[#006bff] hover:underline">API Key</button>
                                                 <button className="text-[#006bff] hover:underline">模型配置</button>
+                                                {/* 加油包：仅生效中套餐可点击 */}
+                                                <button
+                                                    disabled={pkg.status !== "active"}
+                                                    onClick={() => pkg.status === "active" && openAddonDialog(pkg)}
+                                                    className={
+                                                        pkg.status === "active"
+                                                            ? "text-[#006bff] hover:underline"
+                                                            : "text-gray-300 cursor-not-allowed"
+                                                    }
+                                                >
+                                                    加油包
+                                                </button>
                                             </div>
                                         </div>
                                     ));
@@ -3106,6 +3185,226 @@ function EnterprisePageContent() {
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
+
+                            {/* ===== 购买加油包抽屉（右侧滑出） ===== */}
+                            <Sheet open={addonDialogOpen} onOpenChange={setAddonDialogOpen}>
+                                <SheetContent side="right" className="w-full sm:max-w-[560px] p-0 gap-0 flex flex-col">
+                                    <div className="px-6 py-4 border-b border-gray-100">
+                                        <SheetTitle className="text-lg font-semibold text-gray-900">购买加油包</SheetTitle>
+                                    </div>
+                                    <div className="px-6 py-5 flex-1 overflow-y-auto">
+                                        {/* 购买说明 */}
+                                        <div className="text-xs text-gray-500 leading-relaxed space-y-2">
+                                            <p>
+                                                <span className="text-gray-700 font-medium">购买说明：</span>
+                                                加油包在套餐有效期间内使用，优先使用套餐包里的积分，套餐包积分不足时使用加油包里的积分。加油包不支持退订，请按需购买避免浪费。
+                                            </p>
+                                            <p>
+                                                <span className="text-gray-700 font-medium">计费说明：</span>
+                                                个人加油包使用个人当月配额支付；组织加油包账单归属到所在部门下的结算单元。务必确认结算单元是否正确，如有疑问请咨询 lujingbao
+                                            </p>
+                                        </div>
+                                        {/* 当前套餐 */}
+                                        <div className="mt-4 text-sm text-gray-700">
+                                            <span className="text-gray-500">当前套餐：</span>
+                                            <span className="font-medium">{addonPkg?.name}</span>
+                                            <span className="ml-4 text-gray-500">{addonPkg?.expireTime}</span>
+                                            <span className="ml-2 text-gray-400">到期，请按需购买避免浪费。</span>
+                                        </div>
+                                        {/* tab：个人/组织加油包 */}
+                                        <div className="flex items-center gap-8 mt-5 border-b border-gray-100">
+                                            {allowPersonalAddon && (
+                                                <button
+                                                    onClick={() => setAddonTab("personal")}
+                                                    className={`pb-2 text-sm font-medium transition-colors ${
+                                                        addonTab === "personal"
+                                                            ? "text-[#006bff] border-b-2 border-[#006bff]"
+                                                            : "text-gray-500 hover:text-gray-700"
+                                                    }`}
+                                                >
+                                                    个人加油包
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setAddonTab("org")}
+                                                className={`pb-2 text-sm font-medium transition-colors ${
+                                                    addonTab === "org"
+                                                        ? "text-[#006bff] border-b-2 border-[#006bff]"
+                                                        : "text-gray-500 hover:text-gray-700"
+                                                }`}
+                                            >
+                                                组织加油包
+                                            </button>
+                                        </div>
+
+                                        {/* 组织加油包：场景切换 + 结算单元 */}
+                                        {addonTab === "org" && (
+                                            <div className="mt-5">
+                                                {/* 场景切换按钮（演示用）：切换“已绑定/未绑定结算单元”两种场景 */}
+                                                <div className="flex items-center gap-2 mb-4 p-2 rounded-lg bg-gray-50 border border-dashed border-gray-200">
+                                                    <span className="text-xs text-gray-400 flex-shrink-0">演示场景切换：</span>
+                                                    <button
+                                                        onClick={() => setOrgSettleBound(true)}
+                                                        className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
+                                                            orgSettleBound
+                                                                ? "bg-[#006bff] text-white"
+                                                                : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        已绑定结算单元
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setOrgSettleBound(false)}
+                                                        className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
+                                                            !orgSettleBound
+                                                                ? "bg-[#006bff] text-white"
+                                                                : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        未绑定结算单元
+                                                    </button>
+                                                </div>
+
+                                                {orgSettleBound ? (
+                                                    <>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-sm text-gray-700 flex-shrink-0">选择结算单元：</span>
+                                                            <select
+                                                                value={addonSettleUnit}
+                                                                onChange={e => setAddonSettleUnit(e.target.value)}
+                                                                className="flex-1 max-w-md px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#006bff] bg-white"
+                                                            >
+                                                                <option value="">选择结算单元</option>
+                                                                {settleUnitOptions.map(u => (
+                                                                    <option key={u.value} value={u.value}>{u.label}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                        <div className="text-xs text-gray-400 mt-1.5 ml-[84px]">结算单元管理员：域账号1、域账号2..</div>
+                                                    </>
+                                                ) : (
+                                                    /* 未绑定结算单元：提示联系管理员 */
+                                                    <div className="flex items-start gap-2 px-4 py-4 rounded-lg bg-orange-50 border border-orange-200">
+                                                        <svg className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        <div className="text-sm text-orange-700 leading-relaxed">
+                                                            尚未绑定结算单元，请联系 <span className="font-semibold">lujingbao</span>。
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* 积分档位卡片 */}
+                                        <div className="grid grid-cols-3 gap-3 mt-5">
+                                            {addonTiers.map((tier, i) => (
+                                                <button
+                                                    key={tier.points}
+                                                    onClick={() => setAddonTierIdx(i)}
+                                                    className={`rounded-lg border-2 py-7 flex flex-col items-center justify-center transition-colors ${
+                                                        addonTierIdx === i
+                                                            ? "border-[#006bff] bg-blue-50/40"
+                                                            : "border-gray-200 hover:border-gray-300"
+                                                    }`}
+                                                >
+                                                    <span className={`text-xl font-semibold ${addonTierIdx === i ? "text-[#006bff]" : "text-gray-800"}`}>
+                                                        {tier.points}积分
+                                                    </span>
+                                                    <span className={`text-sm mt-1 ${addonTierIdx === i ? "text-[#006bff]" : "text-gray-500"}`}>
+                                                        ¥{tier.price.toFixed(2)}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* 底部：费用 + 支付按钮 */}
+                                    <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <span className="text-gray-500">费用</span>
+                                            <HelpCircle className="w-3.5 h-3.5 text-gray-400" />
+                                            <span className="text-xl font-semibold text-red-500">¥ {addonTiers[addonTierIdx].price.toFixed(2)}</span>
+                                            {addonTab === "personal" && (
+                                                <span className="ml-1 text-xs text-[#006bff]">剩余配额 {personalRemainQuota.toFixed(2)}元</span>
+                                            )}
+                                            {addonTab === "org" && addonSettleUnit && (
+                                                <span className="ml-1 text-xs text-[#006bff]">
+                                                    由【{settleUnitOptions.find(u => u.value === addonSettleUnit)?.label}】结算
+                                                </span>
+                                            )}
+                                        </div>
+                                        {addonTab === "personal" ? (
+                                            (() => {
+                                                const insufficient = addonTiers[addonTierIdx].price > personalRemainQuota;
+                                                return (
+                                                    <div className="flex items-center gap-3">
+                                                        {insufficient && (
+                                                            <span className="text-xs text-red-500">配额不足，请充值后再购买</span>
+                                                        )}
+                                                        <button
+                                                            disabled={insufficient}
+                                                            onClick={() => {
+                                                                // 个人余额支付，在已购套餐里展示对应订单
+                                                                alert("支付成功，已生成加油包订单");
+                                                                setAddonDialogOpen(false);
+                                                            }}
+                                                            className={`px-5 py-2 rounded-lg text-sm font-medium text-white ${
+                                                                insufficient ? "bg-gray-300 cursor-not-allowed" : "bg-[#006bff] hover:bg-[#0056d6]"
+                                                            }`}
+                                                        >
+                                                            立即支付
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })()
+                                        ) : (
+                                            <button
+                                                disabled={!addonSettleUnit}
+                                                onClick={() => setAddonConfirmOpen(true)}
+                                                className={`px-5 py-2 rounded-lg text-sm font-medium text-white ${
+                                                    !addonSettleUnit ? "bg-gray-300 cursor-not-allowed" : "bg-[#006bff] hover:bg-[#0056d6]"
+                                                }`}
+                                            >
+                                                立即支付
+                                            </button>
+                                        )}
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+
+                            {/* ===== 组织加油包-购买确认弹窗 ===== */}
+                            <Dialog open={addonConfirmOpen} onOpenChange={setAddonConfirmOpen}>
+                                <DialogContent className="sm:max-w-[420px]">
+                                    <DialogHeader>
+                                        <DialogTitle>购买确认</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="text-sm text-gray-600 leading-relaxed">
+                                        购买后此加油包的账单归属到在【{settleUnitOptions.find(u => u.value === addonSettleUnit)?.label || "选中的结算单元"}】，每月结算。
+                                        结算单元管理员审批后购买成功。
+                                        <div className="mt-3 text-gray-800">确认提交购买申请？</div>
+                                    </div>
+                                    <DialogFooter>
+                                        <button
+                                            onClick={() => setAddonConfirmOpen(false)}
+                                            className="px-4 py-2 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                        >
+                                            取消
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                // 向智汇云提交购买申请，审批通过后提交订单并回调业务状态
+                                                setAddonConfirmOpen(false);
+                                                setAddonDialogOpen(false);
+                                                alert("已向智汇云提交购买申请，审批通过后购买成功");
+                                            }}
+                                            className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#006bff] hover:bg-[#0056d6]"
+                                        >
+                                            确定
+                                        </button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                         )}
                     </div>
@@ -5657,6 +5956,29 @@ function EnterprisePageContent() {
                     </div>
                 </>
             )}
+
+            {/* 【2026.07.01】加油包-购买 悬浮入口：可拖动，点击定位到AI计划-已购套餐，hover展示说明文案 */}
+            <DraggableFloatingButton
+                label="【2026.07.01】加油包-购买"
+                tipTitle="加油包-购买 说明"
+                tipWidth={420}
+                onClick={() => {
+                    setActiveMenu("AI计划");
+                    setAiPlanTab("purchased");
+                }}
+            >
+                <ol className="list-decimal pl-4 space-y-1.5 text-xs text-gray-600 leading-relaxed">
+                    <li>状态是<span className="text-green-600 font-medium">生效中</span>的套餐，加油包按钮可点击；</li>
+                    <li>购买成功后展示，加油包的额度使用进度；</li>
+                </ol>
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="text-xs font-semibold text-red-500 mb-1.5">特殊情况说明：这里智企需要做特殊处理</div>
+                    <ol className="list-decimal pl-4 space-y-1.5 text-xs text-gray-600 leading-relaxed" start={3}>
+                        <li>apimkt只能有一个加油包（一次性配额）存在，所以当有多个加油包时，智企要按顺序把加油包传给apimkt；</li>
+                        <li>智企要做加油包额度的叠加：加油包总额度是多少，总共用了多少。</li>
+                    </ol>
+                </div>
+            </DraggableFloatingButton>
         </div>
     );
 }

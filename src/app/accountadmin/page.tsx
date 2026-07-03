@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo } from "react";
+import DraggableFloatingButton from "@/components/draggable-floating-button";
 
 // 智汇云产品数据
 const zhihuiProductsData = [
@@ -244,9 +245,22 @@ const initialAddonData: AddonPackage[] = [
 ];
 
 // Tab配置
-const adminTabs = [
-    { id: "packages", name: "套餐管理", icon: "package" },
-    { id: "addon", name: "加油包", icon: "fuel" },
+// 「套餐管理」为可展开的父级分组，下含「套餐管理」「加油包」两个子菜单；「AI计划管理」为独立菜单
+const adminTabs: {
+    id: string;
+    name: string;
+    icon: string;
+    children?: { id: string; name: string; icon: string }[];
+}[] = [
+    {
+        id: "package-group",
+        name: "套餐管理",
+        icon: "package",
+        children: [
+            { id: "packages", name: "套餐管理", icon: "package" },
+            { id: "addon", name: "加油包", icon: "fuel" },
+        ],
+    },
     { id: "models", name: "AI计划管理", icon: "cpu" },
 ];
 
@@ -565,7 +579,8 @@ export default function AdminPage() {
     const [productMenuExpanded, setProductMenuExpanded] = useState(true); // 产品管理菜单展开状态
     const [zhiqiBillMenuExpanded, setZhiqiBillMenuExpanded] = useState(false); // 账单管理菜单展开状态
     const [currentMenu, setCurrentMenu] = useState("zhiqi-admin"); // 当前选中的菜单: product-define, product-addon, product-billing, product-package, zhiqi-bill-overview, zhiqi-bill-customer, zhiqi-bill-product, zhiqi-bill-intranet, platform-config, zhiqi-admin
-    const [activeTab, setActiveTab] = useState("packages");
+    const [activeTab, setActiveTab] = useState("addon"); // 默认定位到「加油包」子菜单
+    const [packageGroupExpanded, setPackageGroupExpanded] = useState(true); // 「套餐管理」父级菜单展开状态
     
     // 账单概览页面tab状态
     const [billOverviewTab, setBillOverviewTab] = useState<"all" | "zhihui" | "zhiqi">("all");
@@ -3348,35 +3363,115 @@ export default function AdminPage() {
                             </button>
                         </div>
                         <nav className="py-2 px-2 flex-1">
-                            {adminTabs.map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center rounded-[6px] transition-colors ${
-                                        sidebarCollapsed ? "justify-center px-2" : "gap-3 px-3"
-                                    } text-[13px] font-medium ${
-                                        activeTab === tab.id
-                                            ? "bg-[#0f73f6] text-white"
-                                            : "text-[#5d6570] hover:bg-[#f2f2f2] hover:text-[#2c3442]"
-                                    }`}
-                                    style={{ height: "38px" }}
-                                    title={tab.name}
-                                >
-                                    <span className={`flex-shrink-0 ${activeTab === tab.id ? "text-white" : "text-[#8b929a]"}`}>
-                                        {getTabIcon(tab.icon, "w-5 h-5")}
-                                    </span>
-                                    {!sidebarCollapsed && (
-                                        <>
-                                            <span className="flex-1 text-left">{tab.name}</span>
-                                            {activeTab === tab.id && (
-                                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            {adminTabs.map((tab) => {
+                                // 带子菜单的父级分组（如「套餐管理」）
+                                if (tab.children && tab.children.length > 0) {
+                                    const childActive = tab.children.some((c) => c.id === activeTab);
+                                    // 收起状态下：父级图标直接高亮，点击展开时定位到第一个子项
+                                    if (sidebarCollapsed) {
+                                        return (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setActiveTab(tab.children![0].id)}
+                                                className={`w-full flex items-center justify-center px-2 rounded-[6px] transition-colors text-[13px] font-medium ${
+                                                    childActive
+                                                        ? "bg-[#0f73f6] text-white"
+                                                        : "text-[#5d6570] hover:bg-[#f2f2f2] hover:text-[#2c3442]"
+                                                }`}
+                                                style={{ height: "38px" }}
+                                                title={tab.name}
+                                            >
+                                                <span className={`flex-shrink-0 ${childActive ? "text-white" : "text-[#8b929a]"}`}>
+                                                    {getTabIcon(tab.icon, "w-5 h-5")}
+                                                </span>
+                                            </button>
+                                        );
+                                    }
+                                    return (
+                                        <div key={tab.id}>
+                                            {/* 父级：套餐管理（可展开/收起） */}
+                                            <button
+                                                onClick={() => setPackageGroupExpanded(!packageGroupExpanded)}
+                                                className={`w-full flex items-center gap-3 px-3 rounded-[6px] transition-colors text-[13px] font-medium ${
+                                                    childActive
+                                                        ? "text-[#0f73f6]"
+                                                        : "text-[#5d6570] hover:bg-[#f2f2f2] hover:text-[#2c3442]"
+                                                }`}
+                                                style={{ height: "38px" }}
+                                                title={tab.name}
+                                            >
+                                                <span className={`flex-shrink-0 ${childActive ? "text-[#0f73f6]" : "text-[#8b929a]"}`}>
+                                                    {getTabIcon(tab.icon, "w-5 h-5")}
+                                                </span>
+                                                <span className="flex-1 text-left">{tab.name}</span>
+                                                <svg
+                                                    className={`w-4 h-4 flex-shrink-0 transition-transform ${packageGroupExpanded ? "rotate-90" : ""}`}
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                                 </svg>
+                                            </button>
+                                            {/* 子级菜单 */}
+                                            {packageGroupExpanded && (
+                                                <div className="mt-0.5 space-y-0.5">
+                                                    {tab.children.map((child) => (
+                                                        <button
+                                                            key={child.id}
+                                                            onClick={() => setActiveTab(child.id)}
+                                                            className={`w-full flex items-center gap-3 pl-10 pr-3 rounded-[6px] transition-colors text-[13px] font-medium ${
+                                                                activeTab === child.id
+                                                                    ? "bg-[#0f73f6] text-white"
+                                                                    : "text-[#5d6570] hover:bg-[#f2f2f2] hover:text-[#2c3442]"
+                                                            }`}
+                                                            style={{ height: "38px" }}
+                                                            title={child.name}
+                                                        >
+                                                            <span className="flex-1 text-left">{child.name}</span>
+                                                            {activeTab === child.id && (
+                                                                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                                </svg>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             )}
-                                        </>
-                                    )}
-                                </button>
-                            ))}
+                                        </div>
+                                    );
+                                }
+                                // 独立菜单（如「AI计划管理」）
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`w-full flex items-center rounded-[6px] transition-colors ${
+                                            sidebarCollapsed ? "justify-center px-2" : "gap-3 px-3"
+                                        } text-[13px] font-medium ${
+                                            activeTab === tab.id
+                                                ? "bg-[#0f73f6] text-white"
+                                                : "text-[#5d6570] hover:bg-[#f2f2f2] hover:text-[#2c3442]"
+                                        }`}
+                                        style={{ height: "38px" }}
+                                        title={tab.name}
+                                    >
+                                        <span className={`flex-shrink-0 ${activeTab === tab.id ? "text-white" : "text-[#8b929a]"}`}>
+                                            {getTabIcon(tab.icon, "w-5 h-5")}
+                                        </span>
+                                        {!sidebarCollapsed && (
+                                            <>
+                                                <span className="flex-1 text-left">{tab.name}</span>
+                                                {activeTab === tab.id && (
+                                                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                )}
+                                            </>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </nav>
                     </aside>
 
@@ -4036,34 +4131,6 @@ export default function AdminPage() {
                                             <option value="inactive">已下架</option>
                                         </select>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            setEditingAddon(null);
-                                            setAddonForm({
-                                                id: 0,
-                                                name: "",
-                                                identifier: "",
-                                                product: "ai-plan",
-                                                addonType: "personal",
-                                                unitPrice: null,
-                                                costPrice: null,
-                                                officialDiscount: null,
-                                                vipDiscount: null,
-                                                svipDiscount: null,
-                                                minDiscount: null,
-                                                configs: [{ points: null, price: null }],
-                                                supportCustom: false,
-                                                status: "inactive",
-                                            });
-                                            setAddonDialogOpen(true);
-                                        }}
-                                        className="px-4 py-2 bg-[#006bff] text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        创建加油包
-                                    </button>
                                 </div>
                             </div>
 
@@ -5456,6 +5523,29 @@ export default function AdminPage() {
                     </div>
                 </div>
             )}
+
+            {/* 【2026.07.01】加油包-创建 悬浮入口：可拖动，点击定位到加油包页面，hover展示说明文案 */}
+            <DraggableFloatingButton
+                label="【2026.07.01】加油包-创建"
+                tipTitle="加油包-创建 说明"
+                tipWidth={460}
+                onClick={() => {
+                    setCurrentMenu("zhiqi-admin");
+                    setPackageGroupExpanded(true);
+                    setActiveTab("addon");
+                }}
+            >
+                <p className="text-xs text-gray-600 leading-relaxed mb-2">
+                    智企加油包底层，可以通过总价包实现，智企和智汇云约定个人和组织加油包(基础包)，各字段规则如下：
+                </p>
+                <ol className="list-decimal pl-4 space-y-1.5 text-xs text-gray-600 leading-relaxed">
+                    <li>名称：AI计划_加油包_填写的积分数字</li>
+                    <li>标识：ai_jiayoubao_填写的积分数字</li>
+                    <li>产品：智企</li>
+                    <li>小产品：AI计划</li>
+                    <li>资源包类型：总价包</li>
+                </ol>
+            </DraggableFloatingButton>
         </div>
     );
 }

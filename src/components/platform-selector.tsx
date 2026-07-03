@@ -78,7 +78,12 @@ function PlatformCardBody({ platform }: { platform: PlatformItem }) {
     return (
         <>
             <div className={`h-2 bg-gradient-to-r ${platform.color}`}></div>
-            <div className="p-6">
+            <div className="p-6 relative">
+                {/* 改动提示角标：智汇云卡片提示"绑定结算单元"，其余卡片提示"加油包" */}
+                <div className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-medium text-orange-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    {platform.name === "智汇云" ? "【2026.07.01】绑定结算单元" : "【2026.07.01】加油包"}
+                </div>
                 <div className={`w-20 h-20 ${platform.bgColor} rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}>
                     <div className="text-gray-700">
                         {platform.icon}
