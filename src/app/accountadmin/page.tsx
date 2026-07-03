@@ -864,32 +864,41 @@ export default function AdminPage() {
 
     return (
         <div className="min-h-screen bg-gray-100">
-            {/* 顶部导航栏 */}
-            <header className="h-14 bg-[#006bff] flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-50">
+            {/* 顶部导航栏（遵循 zyun-admin-style-design 规范：白底 56px + 阴影 + 深色文字） */}
+            <header
+                className="h-14 bg-white flex items-center justify-between px-5 fixed top-0 left-0 right-0 z-50"
+                style={{ borderBottom: "1px solid #e4e8ec", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+            >
                 {/* Logo */}
                 <div className="flex items-center">
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                            <span className="text-[#006bff] font-bold text-sm">智</span>
-                        </div>
-                        <span className="text-white text-lg font-semibold">智汇云</span>
+                        <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+                            <path d="M14 2C7.37 2 2 7.37 2 14C2 20.63 7.37 26 14 26C16.95 26 19.7 24.95 21.8 23.1L20.3 21.6C18.6 23.1 16.4 24 14 24C8.48 24 4 19.52 4 14C4 8.48 8.48 4 14 4C16.5 4 18.7 4.9 20.4 6.4L21.9 4.9C19.75 2.95 17 2 14 2Z" fill="#0f73f6" />
+                            <path d="M14 6C10.13 6 7 9.13 7 13C7 16.87 10.13 20 14 20C16.1 20 18 19.1 19.2 17.7L17.8 16.3C17 17.3 15.6 18 14 18C11.24 18 9 15.76 9 13C9 10.24 11.24 8 14 8C15.4 8 16.7 8.5 17.6 9.4L19 8C17.6 6.7 15.9 6 14 6Z" fill="#00d4aa" />
+                        </svg>
+                        <span className="text-[16px] font-semibold text-[#202020]">
+                            360<span className="text-[#0f73f6]">智汇云</span>
+                        </span>
                     </div>
                 </div>
 
                 {/* 右侧操作区 */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center">
                     {/* 消息 */}
-                    <button className="text-white text-sm hover:text-blue-200 transition-colors">
-                        消息(572)
+                    <button className="relative h-8 px-3 flex items-center rounded text-[13px] text-[#2c3442] hover:bg-[#f2f2f2] transition-colors">
+                        消息
+                        <span className="ml-1 min-w-[18px] h-[15px] px-1 rounded-full text-white text-[9px] leading-[15px] text-center" style={{ background: "#ff4d5d" }}>572</span>
                     </button>
 
+                    <div className="w-px h-5 bg-[#e4e8ec] mx-3"></div>
+
                     {/* 用户信息 */}
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center">
-                            <span className="text-white text-sm">L</span>
+                    <div className="flex items-center gap-2 h-8 px-2 rounded hover:bg-[#f2f2f2] cursor-pointer transition-colors">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[13px]" style={{ background: "#6aa7ff" }}>
+                            L
                         </div>
-                        <span className="text-white text-sm">lujingbao</span>
-                        <button className="text-white text-sm hover:text-blue-200 transition-colors">
+                        <span className="text-[13px] text-[#2c3442]">lujingbao</span>
+                        <button className="text-[13px] text-[#5d6570] hover:text-[#0f73f6] transition-colors ml-1">
                             退出
                         </button>
                     </div>
@@ -897,22 +906,23 @@ export default function AdminPage() {
             </header>
 
             {/* 左侧导航栏 */}
-            <aside className="fixed top-14 left-0 w-56 h-[calc(100vh-56px)] bg-[#1e293b] overflow-y-auto">
+            <aside className="fixed top-14 left-0 w-56 h-[calc(100vh-56px)] bg-[#242424] overflow-y-auto">
                 {/* 标题 */}
-                <div className="h-12 flex items-center px-4 border-b border-gray-700">
+                <div className="h-12 flex items-center px-4 border-b border-[#3a3a3a]">
                     <span className="text-white font-medium">管理后台</span>
                 </div>
 
                 {/* 菜单 */}
-                <nav className="py-2">
+                <nav className="py-2 px-2">
                     {/* 一级菜单：产品管理 */}
                     <div>
                         <div
-                            className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
+                            className={`flex items-center justify-between px-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                 ['product-define', 'product-addon', 'product-billing', 'product-package'].includes(currentMenu) 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'text-white hover:bg-gray-700'
+                                    ? 'bg-[#0f73f6] text-white' 
+                                    : 'text-white hover:bg-[#3a3a3a]'
                             }`}
+                            style={{ height: "38px" }}
                             onClick={() => {
                                 setProductMenuExpanded(!productMenuExpanded);
                                 if (!productMenuExpanded) {
@@ -927,44 +937,48 @@ export default function AdminPage() {
                         </div>
                         {/* 二级菜单 */}
                         {productMenuExpanded && (
-                            <div className="bg-gray-800">
+                            <div className="mt-0.5 space-y-0.5">
                                 <div 
                                     onClick={() => setCurrentMenu('product-define')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'product-define' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     产品定义
                                 </div>
                                 <div 
                                     onClick={() => setCurrentMenu('product-addon')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'product-addon' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     产品计费项
                                 </div>
                                 <div 
                                     onClick={() => setCurrentMenu('product-billing')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'product-billing' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     产品计费策略
                                 </div>
                                 <div 
                                     onClick={() => setCurrentMenu('product-package')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'product-package' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     产品套餐
                                 </div>
@@ -973,13 +987,14 @@ export default function AdminPage() {
                     </div>
                     
                     {/* 一级菜单：账单管理 */}
-                    <div>
+                    <div className="mt-0.5">
                         <div
-                            className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
+                            className={`flex items-center justify-between px-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                 ['zhiqi-bill-overview', 'zhiqi-bill-customer', 'zhiqi-bill-product', 'zhiqi-bill-intranet'].includes(currentMenu) 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'text-white hover:bg-gray-700'
+                                    ? 'bg-[#0f73f6] text-white' 
+                                    : 'text-white hover:bg-[#3a3a3a]'
                             }`}
+                            style={{ height: "38px" }}
                             onClick={() => {
                                 setZhiqiBillMenuExpanded(!zhiqiBillMenuExpanded);
                                 if (!zhiqiBillMenuExpanded) {
@@ -994,44 +1009,48 @@ export default function AdminPage() {
                         </div>
                         {/* 二级菜单 */}
                         {zhiqiBillMenuExpanded && (
-                            <div className="bg-gray-800">
+                            <div className="mt-0.5 space-y-0.5">
                                 <div 
                                     onClick={() => setCurrentMenu('zhiqi-bill-overview')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'zhiqi-bill-overview' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     账单概览
                                 </div>
                                 <div 
                                     onClick={() => setCurrentMenu('zhiqi-bill-customer')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'zhiqi-bill-customer' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     客户账单
                                 </div>
                                 <div 
                                     onClick={() => setCurrentMenu('zhiqi-bill-product')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'zhiqi-bill-product' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     产品账单
                                 </div>
                                 <div 
                                     onClick={() => setCurrentMenu('zhiqi-bill-intranet')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'zhiqi-bill-intranet' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     内网账单
                                 </div>
@@ -1042,23 +1061,25 @@ export default function AdminPage() {
                     {/* 一级菜单：平台配置 */}
                     <div
                         onClick={() => setCurrentMenu('platform-config')}
-                        className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
+                        className={`flex items-center justify-between px-3 mt-0.5 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                             currentMenu === 'platform-config' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'text-white hover:bg-gray-700'
+                                ? 'bg-[#0f73f6] text-white' 
+                                : 'text-white hover:bg-[#3a3a3a]'
                         }`}
+                        style={{ height: "38px" }}
                     >
                         <span className="text-sm">平台配置</span>
                     </div>
                     
                     {/* 一级菜单：管理后台 */}
-                    <div>
+                    <div className="mt-0.5">
                         <div
-                            className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
+                            className={`flex items-center justify-between px-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                 currentMenu === 'zhiqi-admin' 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'text-white hover:bg-gray-700'
+                                    ? 'bg-[#0f73f6] text-white' 
+                                    : 'text-white hover:bg-[#3a3a3a]'
                             }`}
+                            style={{ height: "38px" }}
                             onClick={() => {
                                 setAdminMenuExpanded(!adminMenuExpanded);
                                 if (!adminMenuExpanded) {
@@ -1073,14 +1094,15 @@ export default function AdminPage() {
                         </div>
                         {/* 二级菜单：智企管理后台 */}
                         {adminMenuExpanded && (
-                            <div className="bg-gray-800">
+                            <div className="mt-0.5 space-y-0.5">
                                 <div
                                     onClick={() => setCurrentMenu('zhiqi-admin')}
-                                    className={`px-6 py-2.5 cursor-pointer transition-colors text-sm ${
+                                    className={`flex items-center pl-8 pr-3 rounded-[6px] cursor-pointer transition-colors text-[13px] ${
                                         currentMenu === 'zhiqi-admin' 
-                                            ? 'text-blue-400 bg-gray-700' 
-                                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                                            ? 'bg-[#0f73f6] text-white' 
+                                            : 'text-gray-300 hover:text-white hover:bg-[#3a3a3a]'
                                     }`}
+                                    style={{ height: "38px" }}
                                 >
                                     智企管理后台
                                 </div>
@@ -3128,21 +3150,22 @@ export default function AdminPage() {
                                 </svg>
                             </button>
                         </div>
-                        <nav className="py-2 flex-1">
+                        <nav className="py-2 px-2 flex-1">
                             {adminTabs.map((tab) => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center transition-colors ${
-                                        sidebarCollapsed ? "justify-center px-2 py-3" : "gap-3 px-4 py-2.5"
-                                    } text-sm font-medium ${
+                                    className={`w-full flex items-center rounded-[6px] transition-colors ${
+                                        sidebarCollapsed ? "justify-center px-2" : "gap-3 px-3"
+                                    } text-[13px] font-medium ${
                                         activeTab === tab.id
-                                            ? "bg-blue-50 text-[#006bff] border-l-2 border-[#006bff]"
-                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                            ? "bg-[#0f73f6] text-white"
+                                            : "text-[#5d6570] hover:bg-[#f2f2f2] hover:text-[#2c3442]"
                                     }`}
+                                    style={{ height: "38px" }}
                                     title={tab.name}
                                 >
-                                    <span className={`flex-shrink-0 ${activeTab === tab.id ? "text-[#006bff]" : "text-gray-400"}`}>
+                                    <span className={`flex-shrink-0 ${activeTab === tab.id ? "text-white" : "text-[#8b929a]"}`}>
                                         {getTabIcon(tab.icon, "w-5 h-5")}
                                     </span>
                                     {!sidebarCollapsed && (

@@ -5,10 +5,10 @@ import Link from "next/link";
 export default function PlatformPage() {
     const platforms = [
         {
-            name: "智企控制台和企业管理员管理后台",
+                            name: "智企控制台和企业管理员管理后台",
             description: "企业级AI工作平台，大模型调用与管理",
             icon: (
-                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
             ),
@@ -21,13 +21,26 @@ export default function PlatformPage() {
             name: "account后台",
             description: "智企后台管理系统，运维监控与数据总览",
             icon: (
-                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
             ),
-            href: "/admin",
+            href: "/accountadmin",
             color: "from-purple-500 to-purple-600",
             bgColor: "bg-purple-50",
+            external: false,
+        },
+        {
+            name: "智汇云",
+            description: "费用与三方结算管理，绑定结算单元与订单管理",
+            icon: (
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                </svg>
+            ),
+            href: "/zyun",
+            color: "from-blue-500 to-blue-600",
+            bgColor: "bg-blue-50",
             external: false,
         },
     ];
@@ -57,13 +70,13 @@ export default function PlatformPage() {
             </header>
 
             {/* 主内容区 */}
-            <main className="max-w-5xl mx-auto px-4 py-16">
-                <div className="text-center mb-12">
+            <main className="max-w-6xl mx-auto px-4 py-16">
+                <div className="text-center mb-10">
                     <h1 className="text-3xl font-bold text-gray-900 mb-4">选择平台</h1>
                     <p className="text-gray-600 text-lg">请选择您要访问的平台入口</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                     {platforms.map((platform) => (
                         <div
                             key={platform.name}
@@ -75,19 +88,19 @@ export default function PlatformPage() {
                                     className="block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-300"
                                 >
                                     <div className={`h-2 bg-gradient-to-r ${platform.color}`}></div>
-                                    <div className="p-6">
-                                        <div className={`w-20 h-20 ${platform.bgColor} rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                                    <div className="p-4">
+                                        <div className={`w-14 h-14 ${platform.bgColor} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300`}>
                                             <div className="text-gray-700">
                                                 {platform.icon}
                                             </div>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+                                        <h3 className="text-base font-semibold text-gray-900 text-center mb-1.5 min-h-[2.5rem] flex items-center justify-center">
                                             {platform.name}
                                         </h3>
-                                        <p className="text-sm text-gray-500 text-center">
+                                        <p className="text-xs text-gray-500 text-center min-h-[2rem]">
                                             {platform.description}
                                         </p>
-                                        <div className="mt-4 flex justify-center">
+                                        <div className="mt-3 flex justify-center">
                                             <span className="inline-flex items-center gap-1 text-sm text-blue-600 group-hover:gap-2 transition-all">
                                                 进入平台
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,19 +116,19 @@ export default function PlatformPage() {
                                     className="block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-300"
                                 >
                                     <div className={`h-2 bg-gradient-to-r ${platform.color}`}></div>
-                                    <div className="p-6">
-                                        <div className={`w-20 h-20 ${platform.bgColor} rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                                    <div className="p-4">
+                                        <div className={`w-14 h-14 ${platform.bgColor} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300`}>
                                             <div className="text-gray-700">
                                                 {platform.icon}
                                             </div>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+                                        <h3 className="text-base font-semibold text-gray-900 text-center mb-1.5 min-h-[2.5rem] flex items-center justify-center">
                                             {platform.name}
                                         </h3>
-                                        <p className="text-sm text-gray-500 text-center">
+                                        <p className="text-xs text-gray-500 text-center min-h-[2rem]">
                                             {platform.description}
                                         </p>
-                                        <div className="mt-4 flex justify-center">
+                                        <div className="mt-3 flex justify-center">
                                             <span className="inline-flex items-center gap-1 text-sm text-blue-600 group-hover:gap-2 transition-all">
                                                 进入平台
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
