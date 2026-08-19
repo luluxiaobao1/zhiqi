@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { withBasePath, navigateTo, openInNewTab } from "@/lib/navigation";
-import DraggableFloatingButton from "@/components/draggable-floating-button";
 import {
     LineChart,
     Line,
@@ -17,7 +16,6 @@ import {
 } from "recharts";
 
 import {
-    Home,
     Bell,
     HelpCircle,
     User,
@@ -35,7 +33,6 @@ import {
     MessageSquare,
     BookOpen,
     Zap,
-    Bot,
     Code2,
     Cpu,
     Plus,
@@ -79,6 +76,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 import { createPackageOrder, getOrders, type Order } from "@/lib/order-store";
+import { createSettlementRequest } from "@/lib/settlement-request-store";
 
 // 用户角色类型：主账号、管理员、成员
 type UserRole = 'owner' | 'admin' | 'member';
@@ -258,10 +256,7 @@ const aiPlanPurchasedPackages: AiPlanPurchasedPackage[] = [
 
 // 菜单项定义（带角色权限）
 const allMenuItems = [
-    { name: "我的首页", icon: Home, href: "#", roles: ['owner', 'admin', 'member'] as UserRole[] },
-    { name: "龙虾", icon: Bot, href: "#", roles: ['owner', 'admin', 'member'] as UserRole[] },
     { name: "AI计划", icon: Grid, href: "#", roles: ['owner', 'admin', 'member'] as UserRole[] },
-    { name: "管理后台", icon: Settings, href: "#", roles: ['owner', 'admin'] as UserRole[] },
 ];
 
 // 用户-企业-角色映射数据
@@ -784,7 +779,7 @@ function EnterprisePageContent() {
     // 用户名状态 - 从localStorage读取登录时设置的账号
     const [username, setUsername] = useState('未登录');
     const [userAccount, setUserAccount] = useState('');
-    const [activeMenu, setActiveMenu] = useState("我的首页");
+    const [activeMenu, setActiveMenu] = useState("AI计划");
     const [adminTab, setAdminTab] = useState<"overview" | "members" | "models" | "lobster">("overview");
     // AI计划 顶部 tab
     const [aiPlanTab, setAiPlanTab] = useState<"plan" | "purchased" | "stats">("purchased");
@@ -809,8 +804,25 @@ function EnterprisePageContent() {
     const [addonTierIdx, setAddonTierIdx] = useState(0);
     const [addonSettleUnit, setAddonSettleUnit] = useState("");
     const [addonConfirmOpen, setAddonConfirmOpen] = useState(false);
-    // 组织加油包场景（演示切换）：true=已绑定结算单元（正常购买流程）；false=未绑定结算单元（提示联系管理员）
+    // 组织加油包场景（演示切换）：true=已绑定结算单元（正常购买流程）；false=未绑定结算单元（可申请开通组织支付）
     const [orgSettleBound, setOrgSettleBound] = useState(true);
+    // 申请开通组织支付弹窗
+    const [applyOrgPayOpen, setApplyOrgPayOpen] = useState(false);
+    // 申请开通组织支付：选中的结算单元
+    const [applyOrgPayUnit, setApplyOrgPayUnit] = useState("");
+    // 申请开通组织支付：申请说明
+    const [applyOrgPayDesc, setApplyOrgPayDesc] = useState("");
+    // 申请开通组织支付：可选结算单元列表（未绑定场景下查到的组织部门关联的结算单元）
+    const applyOrgPaySettleUnits = [
+        { value: "settle-1", name: "查到的结算单元名称1", admins: "孙磊(sunlei-it)、王秉晨(wangbingchen)、陈依然(chenyiran)" },
+        { value: "settle-2", name: "查到的结算单元名称2", admins: "" },
+    ];
+    // 申请开通组织支付：审核状态 none=未申请 / reviewing=审核中 / rejected=审核未通过
+    const [applyOrgPayStatus, setApplyOrgPayStatus] = useState<"none" | "reviewing" | "rejected">("none");
+    // 申请开通组织支付：提交时选中的结算单元（用于展示审批人）
+    const [applyOrgPaySubmittedUnit, setApplyOrgPaySubmittedUnit] = useState<{ name: string; admins: string } | null>(null);
+    // 申请开通组织支付：拒绝信息（审核未通过时展示）
+    const applyOrgPayReject = { rejectedBy: "孙磊(sunlei-it)", reason: "该组织部门暂不符合开通组织支付的条件，请先完成部门结算单元的归属确认后再申请。" };
     // 个人余额剩余配额（元）
     const personalRemainQuota = 1700;
     // 结算单元选项（组织加油包）
@@ -822,7 +834,9 @@ function EnterprisePageContent() {
     // 打开加油包弹窗
     const openAddonDialog = (pkg: AiPlanPurchasedPackage) => {
         setAddonPkg(pkg);
-        setAddonTab(allowPersonalAddon ? "personal" : "org");
+        // 默认定位到组织加油包，并选中未绑定结算单元的场景
+        setAddonTab("org");
+        setOrgSettleBound(false);
         setAddonTierIdx(0);
         setAddonSettleUnit("");
         setAddonDialogOpen(true);
@@ -2722,161 +2736,6 @@ function EnterprisePageContent() {
                 </div>
             </aside>
 
-            {/* 悬浮场景切换按钮 - 主账号和管理员角色显示，可拖动 */}
-            {(currentUserRole === 'owner' || currentUserRole === 'admin') && (
-                <div 
-                    className="fixed z-[1000]"
-                    style={{ 
-                        left: `${buttonPosition.x}px`, 
-                        top: `${buttonPosition.y}px`,
-                        cursor: isDragging ? 'grabbing' : 'grab'
-                    }}
-                >
-                    <div className="relative">
-                        {/* 悬浮按钮 */}
-                        <button
-                            onMouseDown={handleDragStart}
-                            onClick={() => !isDragging && setScenarioMenuOpen(!scenarioMenuOpen)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg transition-all duration-300 select-none ${
-                                scenarioMenuOpen 
-                                    ? 'bg-red-700 text-white' 
-                                    : 'bg-red-600 text-white hover:bg-red-700'
-                            }`}
-                        >
-                            <FlaskConical className="w-4 h-4" />
-                            <span className="text-sm font-medium">管理员场景切换</span>
-                            <span className={`w-2 h-2 rounded-full bg-white`}></span>
-                            <ChevronDown className={`w-4 h-4 transition-transform ${scenarioMenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        {/* 场景下拉菜单 */}
-                        {scenarioMenuOpen && (
-                            <>
-                                <div 
-                                    className="fixed inset-0 z-40" 
-                                    onClick={() => setScenarioMenuOpen(false)}
-                                />
-                                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 overflow-hidden">
-                                    <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 flex items-center gap-2">
-                                        <FlaskConical className="w-3.5 h-3.5" />
-                                        切换管理员测试场景
-                                    </div>
-                                    <div className="py-1">
-                                        {(Object.keys(scenarioConfig) as ScenarioType[]).map((scenario) => (
-                                            <button
-                                                key={scenario}
-                                                onClick={() => {
-                                                    setCurrentScenario(scenario);
-                                                    setScenarioMenuOpen(false);
-                                                }}
-                                                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${currentScenario === scenario ? 'bg-blue-50' : ''}`}
-                                            >
-                                                <span className={`w-2.5 h-2.5 rounded-full ${scenarioConfig[scenario].color}`}></span>
-                                                <div className="flex-1 text-left">
-                                                    <div className="text-sm text-gray-700">{scenarioConfig[scenario].label}</div>
-                                                    <div className="text-xs text-gray-400">{scenarioConfig[scenario].desc}</div>
-                                                </div>
-                                                {currentScenario === scenario && (
-                                                    <Check className="w-4 h-4 text-blue-600" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* 悬浮成员场景切换按钮 - 成员角色显示，可拖动 */}
-            {currentUserRole === 'member' && (
-                <div 
-                    className="fixed z-[9999]"
-                    style={{ 
-                        left: `${buttonPosition.x}px`, 
-                        top: `${buttonPosition.y}px`,
-                        cursor: isDragging ? 'grabbing' : 'grab'
-                    }}
-                >
-                    <div className="relative">
-                        {/* 悬浮按钮 */}
-                        <button
-                            onMouseDown={handleDragStart}
-                            onClick={() => !isDragging && setMemberScenarioMenuOpen(!memberScenarioMenuOpen)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg transition-all duration-300 select-none ${
-                                memberScenarioMenuOpen 
-                                    ? 'bg-purple-700 text-white' 
-                                    : 'bg-purple-600 text-white hover:bg-purple-700'
-                            }`}
-                        >
-                            <FlaskConical className="w-4 h-4" />
-                            <span className="text-sm font-medium">成员场景切换</span>
-                            <span className={`w-2 h-2 rounded-full bg-white`}></span>
-                            <ChevronDown className={`w-4 h-4 transition-transform ${memberScenarioMenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-
-                        {/* 场景下拉菜单 */}
-                        {memberScenarioMenuOpen && (
-                            <>
-                                <div 
-                                    className="fixed inset-0 z-[10000]" 
-                                    onClick={() => setMemberScenarioMenuOpen(false)}
-                                />
-                                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-[10001] overflow-hidden">
-                                    <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 flex items-center gap-2">
-                                        <FlaskConical className="w-3.5 h-3.5" />
-                                        切换成员测试场景
-                                    </div>
-                                    <div className="py-1">
-                                        {/* 访问权限场景 - 放在前面 */}
-                                        <div className="px-4 py-1.5 text-xs text-gray-400">访问权限场景</div>
-                                        {(Object.keys(memberScenarioConfig) as MemberScenarioType[]).filter(s => s.startsWith('access-')).map((scenario) => (
-                                            <button
-                                                key={scenario}
-                                                onClick={() => {
-                                                    handleMemberScenarioChange(scenario);
-                                                }}
-                                                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${memberScenario === scenario ? 'bg-purple-50' : ''}`}
-                                            >
-                                                <span className={`w-2.5 h-2.5 rounded-full ${memberScenarioConfig[scenario].color}`}></span>
-                                                <div className="flex-1 text-left">
-                                                    <div className="text-sm text-gray-700">{memberScenarioConfig[scenario].label}</div>
-                                                    <div className="text-xs text-gray-400">{memberScenarioConfig[scenario].desc}</div>
-                                                </div>
-                                                {memberScenario === scenario && (
-                                                    <Check className="w-4 h-4 text-purple-600" />
-                                                )}
-                                            </button>
-                                        ))}
-                                        <div className="my-1 border-t border-gray-200" />
-                                        <div className="px-4 py-1.5 text-xs text-gray-400">配额与套餐场景</div>
-                                        {/* 配额与套餐场景 - 放在后面 */}
-                                        {(Object.keys(memberScenarioConfig) as MemberScenarioType[]).filter(s => !s.startsWith('access-')).map((scenario) => (
-                                            <button
-                                                key={scenario}
-                                                onClick={() => {
-                                                    handleMemberScenarioChange(scenario);
-                                                }}
-                                                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${memberScenario === scenario ? 'bg-purple-50' : ''}`}
-                                            >
-                                                <span className={`w-2.5 h-2.5 rounded-full ${memberScenarioConfig[scenario].color}`}></span>
-                                                <div className="flex-1 text-left">
-                                                    <div className="text-sm text-gray-700">{memberScenarioConfig[scenario].label}</div>
-                                                    <div className="text-xs text-gray-400">{memberScenarioConfig[scenario].desc}</div>
-                                                </div>
-                                                {memberScenario === scenario && (
-                                                    <Check className="w-4 h-4 text-purple-600" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
             {}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="sm:max-w-md">
@@ -3156,18 +3015,24 @@ function EnterprisePageContent() {
                                             <div className="flex items-center gap-4 text-sm">
                                                 <button className="text-[#006bff] hover:underline">API Key</button>
                                                 <button className="text-[#006bff] hover:underline">模型配置</button>
-                                                {/* 加油包：仅生效中套餐可点击 */}
-                                                <button
-                                                    disabled={pkg.status !== "active"}
-                                                    onClick={() => pkg.status === "active" && openAddonDialog(pkg)}
-                                                    className={
-                                                        pkg.status === "active"
-                                                            ? "text-[#006bff] hover:underline"
-                                                            : "text-gray-300 cursor-not-allowed"
-                                                    }
-                                                >
-                                                    加油包
-                                                </button>
+                                                {/* 加油包：仅生效中套餐可点击。本期改动，高亮提示 */}
+                                                <div className="relative inline-flex">
+                                                    {/* 本期改动角标 */}
+                                                    <span className="absolute -top-2.5 -right-2 z-10 px-1.5 py-0.5 rounded-full bg-[#f5222d] text-white text-[10px] leading-none font-medium shadow-sm whitespace-nowrap">
+                                                        本期改动
+                                                    </span>
+                                                    <button
+                                                        disabled={pkg.status !== "active"}
+                                                        onClick={() => pkg.status === "active" && openAddonDialog(pkg)}
+                                                        className={
+                                                            pkg.status === "active"
+                                                                ? "px-2 py-1 rounded-md font-medium text-[#f5222d] bg-[#fff1f0] border border-[#ffccc7] hover:bg-[#ffece8] transition-colors"
+                                                                : "px-2 py-1 rounded-md text-gray-300 bg-gray-50 border border-gray-100 cursor-not-allowed"
+                                                        }
+                                                    >
+                                                        加油包
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ));
@@ -3188,7 +3053,7 @@ function EnterprisePageContent() {
 
                             {/* ===== 购买加油包抽屉（右侧滑出） ===== */}
                             <Sheet open={addonDialogOpen} onOpenChange={setAddonDialogOpen}>
-                                <SheetContent side="right" className="w-full sm:max-w-[560px] p-0 gap-0 flex flex-col">
+                                <SheetContent side="right" className="w-full sm:max-w-[720px] p-0 gap-0 flex flex-col">
                                     <div className="px-6 py-4 border-b border-gray-100">
                                         <SheetTitle className="text-lg font-semibold text-gray-900">购买加油包</SheetTitle>
                                     </div>
@@ -3244,16 +3109,6 @@ function EnterprisePageContent() {
                                                 <div className="flex items-center gap-2 mb-4 p-2 rounded-lg bg-gray-50 border border-dashed border-gray-200">
                                                     <span className="text-xs text-gray-400 flex-shrink-0">演示场景切换：</span>
                                                     <button
-                                                        onClick={() => setOrgSettleBound(true)}
-                                                        className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
-                                                            orgSettleBound
-                                                                ? "bg-[#006bff] text-white"
-                                                                : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100"
-                                                        }`}
-                                                    >
-                                                        已绑定结算单元
-                                                    </button>
-                                                    <button
                                                         onClick={() => setOrgSettleBound(false)}
                                                         className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
                                                             !orgSettleBound
@@ -3262,6 +3117,16 @@ function EnterprisePageContent() {
                                                         }`}
                                                     >
                                                         未绑定结算单元
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setOrgSettleBound(true)}
+                                                        className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
+                                                            orgSettleBound
+                                                                ? "bg-[#006bff] text-white"
+                                                                : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        已绑定结算单元
                                                     </button>
                                                 </div>
 
@@ -3283,20 +3148,146 @@ function EnterprisePageContent() {
                                                         <div className="text-xs text-gray-400 mt-1.5 ml-[84px]">结算单元管理员：域账号1、域账号2..</div>
                                                     </>
                                                 ) : (
-                                                    /* 未绑定结算单元：提示联系管理员 */
-                                                    <div className="flex items-start gap-2 px-4 py-4 rounded-lg bg-orange-50 border border-orange-200">
-                                                        <svg className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <div className="text-sm text-orange-700 leading-relaxed">
-                                                            尚未绑定结算单元，请联系 <span className="font-semibold">lujingbao</span>。
+                                                    /* 未绑定结算单元：可申请开通组织支付 */
+                                                    <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                                                        {/* 顶部提示条 */}
+                                                        <div className="flex items-start gap-3 px-5 py-4 bg-gradient-to-r from-orange-50 to-amber-50/60 border-b border-orange-100">
+                                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 flex-shrink-0">
+                                                                <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="text-sm font-medium text-gray-900">当前组织尚未绑定结算单元</div>
+                                                                <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">暂不可使用组织支付，您可按以下流程申请开通组织支付。</div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* 开通流程步骤 */}
+                                                        <div className="px-5 py-5">
+                                                            <div className="flex items-stretch">
+                                                                {[
+                                                                    { step: "1", title: "申请开通", desc: "提交组织支付申请" },
+                                                                    { step: "2", title: "管理员审批", desc: "结算单元管理员审核" },
+                                                                    { step: "3", title: "开通完成", desc: "可使用组织支付" },
+                                                                ].map((item, idx, arr) => (
+                                                                    <div key={item.step} className="flex-1 flex items-center">
+                                                                        <div className="flex flex-col items-center text-center flex-1">
+                                                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#006bff]/10 text-[#006bff] text-sm font-semibold">
+                                                                                {item.step}
+                                                                            </div>
+                                                                            <div className="text-xs font-medium text-gray-800 mt-2">{item.title}</div>
+                                                                            <div className="text-[11px] text-gray-400 mt-0.5 leading-tight">{item.desc}</div>
+                                                                        </div>
+                                                                        {idx < arr.length - 1 && (
+                                                                            <div className="w-8 h-px bg-gray-200 flex-shrink-0 -mt-6" />
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+
+                                                            {applyOrgPayStatus === "none" && (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setApplyOrgPayUnit("");
+                                                                        setApplyOrgPayDesc("");
+                                                                        setApplyOrgPayOpen(true);
+                                                                    }}
+                                                                    className="w-full mt-5 py-2.5 rounded-lg text-sm font-medium text-white bg-[#006bff] hover:bg-[#0056d6] transition-colors shadow-sm shadow-[#006bff]/20"
+                                                                >
+                                                                    申请开通组织支付
+                                                                </button>
+                                                            )}
+
+                                                            {/* 审核中 */}
+                                                            {applyOrgPayStatus === "reviewing" && (
+                                                                <div className="mt-5 rounded-lg border border-blue-100 bg-blue-50/50 px-4 py-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#006bff]/10">
+                                                                            <svg className="w-3 h-3 text-[#006bff] animate-spin" fill="none" viewBox="0 0 24 24">
+                                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                                            </svg>
+                                                                        </span>
+                                                                        <span className="text-sm font-medium text-[#006bff]">审核中</span>
+                                                                    </div>
+                                                                    <div className="mt-2 text-xs text-gray-600 leading-relaxed">
+                                                                        您的组织支付申请已提交，待结算单元管理员审批通过后可使用组织支付。
+                                                                    </div>
+                                                                    <div className="mt-2 text-xs text-gray-700">
+                                                                        <span className="text-gray-500">结算单元：</span>{applyOrgPaySubmittedUnit?.name || "-"}
+                                                                    </div>
+                                                                    <div className="mt-1 text-xs text-gray-700">
+                                                                        <span className="text-gray-500">审批人：</span>
+                                                                        {applyOrgPaySubmittedUnit?.admins || "该结算单元暂无管理员"}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* 审核未通过 */}
+                                                            {applyOrgPayStatus === "rejected" && (
+                                                                <div className="mt-5 rounded-lg border border-red-100 bg-red-50/50 px-4 py-4">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-100">
+                                                                            <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                                            </svg>
+                                                                        </span>
+                                                                        <span className="text-sm font-medium text-red-500">审核未通过</span>
+                                                                    </div>
+                                                                    <div className="mt-2 text-xs text-gray-700">
+                                                                        <span className="text-gray-500">拒绝人：</span>{applyOrgPayReject.rejectedBy}
+                                                                    </div>
+                                                                    <div className="mt-1 text-xs text-gray-700 leading-relaxed">
+                                                                        <span className="text-gray-500">拒绝原因：</span>{applyOrgPayReject.reason}
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setApplyOrgPayUnit("");
+                                                                            setApplyOrgPayDesc("");
+                                                                            setApplyOrgPayOpen(true);
+                                                                        }}
+                                                                        className="w-full mt-3 py-2.5 rounded-lg text-sm font-medium text-white bg-[#006bff] hover:bg-[#0056d6] transition-colors shadow-sm shadow-[#006bff]/20"
+                                                                    >
+                                                                        重新申请
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                            {/* 演示：审核状态切换 */}
+                                                            <div className="flex items-center gap-2 mt-4 pt-3 border-t border-dashed border-gray-200">
+                                                                <span className="text-[11px] text-gray-400 flex-shrink-0">演示审核状态：</span>
+                                                                {([
+                                                                    { key: "none", label: "未申请" },
+                                                                    { key: "reviewing", label: "审核中" },
+                                                                    { key: "rejected", label: "审核未通过" },
+                                                                ] as const).map(s => (
+                                                                    <button
+                                                                        key={s.key}
+                                                                        onClick={() => {
+                                                                            if (s.key === "reviewing" && !applyOrgPaySubmittedUnit) {
+                                                                                setApplyOrgPaySubmittedUnit({ name: applyOrgPaySettleUnits[0].name, admins: applyOrgPaySettleUnits[0].admins });
+                                                                            }
+                                                                            setApplyOrgPayStatus(s.key);
+                                                                        }}
+                                                                        className={`px-2.5 py-1 text-[11px] rounded-full transition-colors ${
+                                                                            applyOrgPayStatus === s.key
+                                                                                ? "bg-[#006bff] text-white"
+                                                                                : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100"
+                                                                        }`}
+                                                                    >
+                                                                        {s.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
 
-                                        {/* 积分档位卡片 */}
+                                        {/* 积分档位卡片（组织加油包未绑定结算单元时隐藏） */}
+                                        {!(addonTab === "org" && !orgSettleBound) && (
                                         <div className="grid grid-cols-3 gap-3 mt-5">
                                             {addonTiers.map((tier, i) => (
                                                 <button
@@ -3317,9 +3308,11 @@ function EnterprisePageContent() {
                                                 </button>
                                             ))}
                                         </div>
+                                        )}
                                     </div>
 
-                                    {/* 底部：费用 + 支付按钮 */}
+                                    {/* 底部：费用 + 支付按钮（组织加油包未绑定结算单元时隐藏） */}
+                                    {!(addonTab === "org" && !orgSettleBound) && (
                                     <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-sm">
                                             <span className="text-gray-500">费用</span>
@@ -3370,8 +3363,112 @@ function EnterprisePageContent() {
                                             </button>
                                         )}
                                     </div>
+                                    )}
                                 </SheetContent>
                             </Sheet>
+
+                            {/* ===== 申请开通组织支付弹窗 ===== */}
+                            <Dialog open={applyOrgPayOpen} onOpenChange={setApplyOrgPayOpen}>
+                                <DialogContent className="sm:max-w-[760px]">
+                                    <DialogHeader>
+                                        <DialogTitle>申请开通组织支付</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-1">
+                                        {/* 组织部门 */}
+                                        <div className="text-sm text-gray-700">
+                                            您的组织部门是：<span className="text-gray-500">技术中台/智汇云产品部/应用平台部/web服务组</span>
+                                        </div>
+                                        {/* 选择结算单元 */}
+                                        <div>
+                                            <div className="text-sm text-gray-700 mb-2">
+                                                <div className="whitespace-nowrap"><span className="text-red-500">*</span> 选择结算单元：</div>
+                                                <div className="text-xs text-gray-400 mt-1 whitespace-nowrap">您的组织部门已关联的结算单元如下，如有疑惑请咨询 <span className="font-medium">lujingbao</span></div>
+                                            </div>
+                                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="bg-gray-50 text-gray-500">
+                                                            <th className="w-16 py-2.5 font-medium border-b border-gray-200">选择</th>
+                                                            <th className="py-2.5 font-medium border-b border-gray-200 text-left px-3">结算单元名称</th>
+                                                            <th className="py-2.5 font-medium border-b border-gray-200 text-left px-3">结算单元管理员</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {applyOrgPaySettleUnits.map(u => (
+                                                            <tr
+                                                                key={u.value}
+                                                                onClick={() => setApplyOrgPayUnit(u.value)}
+                                                                className="cursor-pointer hover:bg-blue-50/40 border-b border-gray-100 last:border-b-0"
+                                                            >
+                                                                <td className="py-3 text-center">
+                                                                    <input
+                                                                        type="radio"
+                                                                        name="applyOrgPayUnit"
+                                                                        checked={applyOrgPayUnit === u.value}
+                                                                        onChange={() => setApplyOrgPayUnit(u.value)}
+                                                                        className="w-4 h-4 accent-[#006bff]"
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-3 text-gray-700">{u.name}</td>
+                                                                <td className="py-3 px-3 text-gray-500">{u.admins}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        {/* 申请说明 */}
+                                        <div>
+                                            <div className="text-sm text-gray-700 mb-2">
+                                                <span className="text-red-500">*</span> 申请说明：
+                                            </div>
+                                            <textarea
+                                                value={applyOrgPayDesc}
+                                                onChange={e => setApplyOrgPayDesc(e.target.value.slice(0, 100))}
+                                                maxLength={100}
+                                                rows={4}
+                                                placeholder="申请说明，100个字符以内"
+                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#006bff] resize-none"
+                                            />
+                                            <div className="text-right text-xs text-gray-400 mt-1">{applyOrgPayDesc.length}/100</div>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <button
+                                            onClick={() => setApplyOrgPayOpen(false)}
+                                            className="px-5 py-2 rounded-lg text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200"
+                                        >
+                                            取消
+                                        </button>
+                                        <button
+                                            disabled={!applyOrgPayUnit || !applyOrgPayDesc.trim()}
+                                            onClick={() => {
+                                                const unit = applyOrgPaySettleUnits.find(u => u.value === applyOrgPayUnit);
+                                                if (unit) {
+                                                    setApplyOrgPaySubmittedUnit({ name: unit.name, admins: unit.admins });
+                                                    // 提交一条开通组织支付申请到 zyun「关联三方结算管理」待审批列表
+                                                    createSettlementRequest({
+                                                        unitName: unit.name,
+                                                        subjectType: "组织机构",
+                                                        subjectName: "技术中台/智汇云产品部/应用平台部/web服务组",
+                                                        remark: applyOrgPayDesc,
+                                                        applicant: userAccount || username,
+                                                    });
+                                                }
+                                                setApplyOrgPayStatus("reviewing");
+                                                setApplyOrgPayOpen(false);
+                                            }}
+                                            className={`px-5 py-2 rounded-lg text-sm font-medium text-white ${
+                                                !applyOrgPayUnit || !applyOrgPayDesc.trim()
+                                                    ? "bg-gray-300 cursor-not-allowed"
+                                                    : "bg-[#006bff] hover:bg-[#0056d6]"
+                                            }`}
+                                        >
+                                            申请开通组织支付
+                                        </button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
 
                             {/* ===== 组织加油包-购买确认弹窗 ===== */}
                             <Dialog open={addonConfirmOpen} onOpenChange={setAddonConfirmOpen}>
@@ -5956,29 +6053,6 @@ function EnterprisePageContent() {
                     </div>
                 </>
             )}
-
-            {/* 【2026.07.01】加油包-购买 悬浮入口：可拖动，点击定位到AI计划-已购套餐，hover展示说明文案 */}
-            <DraggableFloatingButton
-                label="【2026.07.01】加油包-购买"
-                tipTitle="加油包-购买 说明"
-                tipWidth={420}
-                onClick={() => {
-                    setActiveMenu("AI计划");
-                    setAiPlanTab("purchased");
-                }}
-            >
-                <ol className="list-decimal pl-4 space-y-1.5 text-xs text-gray-600 leading-relaxed">
-                    <li>状态是<span className="text-green-600 font-medium">生效中</span>的套餐，加油包按钮可点击；</li>
-                    <li>购买成功后展示，加油包的额度使用进度；</li>
-                </ol>
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="text-xs font-semibold text-red-500 mb-1.5">特殊情况说明：这里智企需要做特殊处理</div>
-                    <ol className="list-decimal pl-4 space-y-1.5 text-xs text-gray-600 leading-relaxed" start={3}>
-                        <li>apimkt只能有一个加油包（一次性配额）存在，所以当有多个加油包时，智企要按顺序把加油包传给apimkt；</li>
-                        <li>智企要做加油包额度的叠加：加油包总额度是多少，总共用了多少。</li>
-                    </ol>
-                </div>
-            </DraggableFloatingButton>
         </div>
     );
 }

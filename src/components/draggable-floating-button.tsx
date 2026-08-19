@@ -9,7 +9,7 @@
  * - hover 时在按钮上方弹出说明内容（children 作为说明框正文）；
  * - 醒目的橙色渐变 + 阴影 + 呼吸光圈样式，突出改动提示。
  *
- * 两个页面（console / accountadmin）共用本组件，只需传入 label / onClick / children。
+ * console 页面使用本组件，只需传入 label / onClick / children。
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";

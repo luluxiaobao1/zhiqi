@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { navigateTo } from "@/lib/navigation";
+import {
+    getSettlementRequests,
+    approveSettlementRequest,
+    rejectSettlementRequest,
+    type SettlementRequest,
+    type SettlementRequestStatus,
+} from "@/lib/settlement-request-store";
 
 import {
     ChevronDown,
@@ -310,6 +317,15 @@ export default function ZyunPage() {
     const [searchKeyword, setSearchKeyword] = useState("");
     const [selectedUnit, setSelectedUnit] = useState("");
 
+    // 关联三方结算管理：状态 Tab（待审批 / 已通过 / 已拒绝）
+    const [settleTab, setSettleTab] = useState<SettlementRequestStatus>("pending");
+    // console 端提交的申请（含待审批/已通过/已拒绝），从 localStorage 读取
+    const [settleRequests, setSettleRequests] = useState<SettlementRequest[]>([]);
+    // 审批弹窗（关联三方结算管理）
+    const [settleApproveDialog, setSettleApproveDialog] = useState<SettlementRequest | null>(null);
+    const [settleRejectDialog, setSettleRejectDialog] = useState<SettlementRequest | null>(null);
+    const [settleRejectReason, setSettleRejectReason] = useState("");
+
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [unbindDialogOpen, setUnbindDialogOpen] = useState(false);
     const [, setCurrentRecord] = useState<Record<string, string> | null>(null);
@@ -344,10 +360,40 @@ export default function ZyunPage() {
         }
     }, []);
 
+    // 读取 console 端提交的开通组织支付申请
+    useEffect(() => {
+        setSettleRequests(getSettlementRequests());
+        // 页面重新可见时刷新（从 console 切回来能看到新申请）
+        const onFocus = () => setSettleRequests(getSettlementRequests());
+        window.addEventListener("focus", onFocus);
+        document.addEventListener("visibilitychange", onFocus);
+        return () => {
+            window.removeEventListener("focus", onFocus);
+            document.removeEventListener("visibilitychange", onFocus);
+        };
+    }, []);
+
     const handleLogout = () => {
         localStorage.removeItem("zhiqi_logged_in");
         localStorage.removeItem("zhiqi_user_info");
         navigateTo("/");
+    };
+
+    // 关联三方结算管理：审批通过
+    const confirmSettleApprove = () => {
+        if (!settleApproveDialog) return;
+        approveSettlementRequest(settleApproveDialog.id, `${username}@360.cn`);
+        setSettleRequests(getSettlementRequests());
+        setSettleApproveDialog(null);
+    };
+
+    // 关联三方结算管理：审批拒绝
+    const confirmSettleReject = () => {
+        if (!settleRejectDialog) return;
+        rejectSettlementRequest(settleRejectDialog.id, `${username}@360.cn`, settleRejectReason.trim() || undefined);
+        setSettleRequests(getSettlementRequests());
+        setSettleRejectDialog(null);
+        setSettleRejectReason("");
     };
 
     const handleCreate = () => {
@@ -378,8 +424,38 @@ export default function ZyunPage() {
         setUnbindDialogOpen(true);
     };
 
-    // 成员名称搜索：按关联主体名称过滤
-    const filteredData = tableData.filter((row) => {
+    // 关联三方结算管理：合并「基础已通过绑定列表(tableData)」与「console 提交的申请(store)」
+    // - 待审批：仅来自 store 的 pending 申请
+    // - 已通过：tableData 原有绑定 + store 中已通过的申请
+    // - 已拒绝：store 中已拒绝的申请
+    const baseApproved: SettlementRequest[] = tableData.map((r) => ({
+        id: r.id,
+        unitName: r.unitName,
+        resourceGroup: r.resourceGroup,
+        subjectType: r.subjectType,
+        subjectName: r.subjectName,
+        subjectId: r.subjectId,
+        remark: r.remark,
+        operator: r.operator,
+        operateTime: r.operateTime,
+        status: "approved" as SettlementRequestStatus,
+    }));
+
+    const settleByTab: Record<SettlementRequestStatus, SettlementRequest[]> = {
+        pending: settleRequests.filter((r) => r.status === "pending"),
+        approved: [...settleRequests.filter((r) => r.status === "approved"), ...baseApproved],
+        rejected: settleRequests.filter((r) => r.status === "rejected"),
+    };
+
+    // 各 Tab 数量（N/M/Q）
+    const settleCount = {
+        pending: settleByTab.pending.length,
+        approved: settleByTab.approved.length,
+        rejected: settleByTab.rejected.length,
+    };
+
+    // 成员名称搜索 + 结算单元筛选，作用于当前 Tab 列表
+    const filteredData = settleByTab[settleTab].filter((row) => {
         const kw = searchKeyword.trim();
         const matchKw = kw === "" || row.subjectName.includes(kw);
         const matchUnit = selectedUnit === "" || row.unitName === selectedUnit;
@@ -569,27 +645,35 @@ export default function ZyunPage() {
                             <div>
                                 {group.children.map((child) => {
                                     const active = activeMenu === child.key;
+                                    // 本期改动菜单项：非选中态用淡红色底高亮
+                                    const isHighlight = child.key === "third-party-settlement";
+                                    const restBg = isHighlight ? "#fff1f0" : "transparent";
                                     return (
                                         <div
                                             key={child.key}
                                             onClick={() => setActiveMenu(child.key)}
-                                            className="flex items-center text-[13px] cursor-pointer transition-colors rounded-[6px]"
+                                            className="relative flex items-center text-[13px] cursor-pointer transition-colors rounded-[6px]"
                                             style={{
                                                 height: "38px",
                                                 paddingLeft: "32px",
                                                 paddingRight: "10px",
-                                                background: active ? "#0f73f6" : "transparent",
-                                                color: active ? "#ffffff" : "#2c3442",
-                                                fontWeight: active ? 500 : 400,
+                                                background: active ? "#0f73f6" : restBg,
+                                                color: active ? "#ffffff" : (isHighlight ? "#f5222d" : "#2c3442"),
+                                                fontWeight: active ? 500 : (isHighlight ? 500 : 400),
                                             }}
                                             onMouseEnter={(e) => {
-                                                if (!active) e.currentTarget.style.background = "#f2f2f2";
+                                                if (!active) e.currentTarget.style.background = isHighlight ? "#ffece8" : "#f2f2f2";
                                             }}
                                             onMouseLeave={(e) => {
-                                                if (!active) e.currentTarget.style.background = "transparent";
+                                                if (!active) e.currentTarget.style.background = restBg;
                                             }}
                                         >
-                                            {child.name}
+                                            <span className="whitespace-nowrap">{child.name}</span>
+                                            {child.key === "third-party-settlement" && (
+                                                <span className="absolute -top-1 right-1 z-10 px-1.5 py-0.5 rounded-full text-[10px] leading-none font-medium bg-[#f5222d] text-white whitespace-nowrap shadow-sm">
+                                                    本期改动
+                                                </span>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -612,6 +696,32 @@ export default function ZyunPage() {
                         结算单元关联三方结算后，租户下成员在对应三方产品(如智企)上可以通过绑定的结算单元购买服务，费用由绑定的结算单元承担。
                     </div>
 
+                    {/* 状态 Tab：待审批 / 已通过 / 已拒绝 */}
+                    <div className="flex items-center border-b border-gray-200 mb-4">
+                        {([
+                            { key: "pending", label: "待审批", count: settleCount.pending },
+                            { key: "approved", label: "已通过", count: settleCount.approved },
+                            { key: "rejected", label: "已拒绝", count: settleCount.rejected },
+                        ] as { key: SettlementRequestStatus; label: string; count: number }[]).map((tab) => {
+                            const active = settleTab === tab.key;
+                            return (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setSettleTab(tab.key)}
+                                    className="relative px-5 h-10 text-sm font-medium transition-colors"
+                                    style={{ color: active ? "#0066FF" : "#5d6570" }}
+                                >
+                                    {tab.label} ({tab.count})
+                                    {active && (
+                                        <span className="absolute left-0 right-0 -bottom-px h-0.5" style={{ background: "#0066FF" }}></span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+
+                    {/* 搜索筛选栏 */}
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                             <input
@@ -627,18 +737,20 @@ export default function ZyunPage() {
                                 onChange={(e) => setSelectedUnit(e.target.value)}
                             >
                                 <option value="">结算单元筛选，默认全部</option>
-                                {[...new Set(tableData.map((r) => r.unitName))].map((u) => (
+                                {[...new Set(settleByTab[settleTab].map((r) => r.unitName))].map((u) => (
                                     <option key={u} value={u}>{u}</option>
                                 ))}
                             </select>
                         </div>
-                        <Button
-                            size="sm"
-                            className="bg-[#0066FF] hover:bg-[#0052cc] h-8 px-4"
-                            onClick={handleCreate}
-                        >
-                            新建关联
-                        </Button>
+                        {settleTab === "approved" && (
+                            <Button
+                                size="sm"
+                                className="bg-[#0066FF] hover:bg-[#0052cc] h-8 px-4"
+                                onClick={handleCreate}
+                            >
+                                新建关联
+                            </Button>
+                        )}
                     </div>
 
                     <div className="bg-white border border-gray-200 rounded overflow-x-auto">
@@ -650,16 +762,18 @@ export default function ZyunPage() {
                                     <th className="px-4 py-3 font-medium border-r border-gray-200">关联主体类型</th>
                                     <th className="px-4 py-3 font-medium border-r border-gray-200">关联主体名称</th>
                                     <th className="px-4 py-3 font-medium border-r border-gray-200">关联主体ID</th>
-                                    <th className="px-4 py-3 font-medium border-r border-gray-200">备注</th>
-                                    <th className="px-4 py-3 font-medium border-r border-gray-200">操作人</th>
+                                    <th className="px-4 py-3 font-medium border-r border-gray-200">{settleTab === "pending" ? "申请说明" : "备注"}</th>
+                                    {settleTab === "pending" && <th className="px-4 py-3 font-medium border-r border-gray-200">申请时间</th>}
+                                    <th className="px-4 py-3 font-medium border-r border-gray-200">{settleTab === "pending" ? "申请人" : "操作人"}</th>
                                     <th className="px-4 py-3 font-medium border-r border-gray-200">操作时间</th>
-                                    <th className="px-4 py-3 font-medium">操作</th>
+                                    {settleTab === "rejected" && <th className="px-4 py-3 font-medium border-r border-gray-200">拒绝原因</th>}
+                                    {settleTab !== "rejected" && <th className="px-4 py-3 font-medium">操作</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {filteredData.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className="px-4 py-10 text-center text-gray-400">暂无数据</td>
+                                        <td colSpan={settleTab === "pending" ? 10 : settleTab === "rejected" ? 10 : 9} className="px-4 py-10 text-center text-gray-400">暂无数据</td>
                                     </tr>
                                 ) : (
                                     filteredData.map((row) => (
@@ -670,12 +784,40 @@ export default function ZyunPage() {
                                             <td className="px-4 py-3 border-r border-gray-100">{row.subjectName}</td>
                                             <td className="px-4 py-3 border-r border-gray-100">{row.subjectId}</td>
                                             <td className="px-4 py-3 border-r border-gray-100">{row.remark}</td>
-                                            <td className="px-4 py-3 border-r border-gray-100">{row.operator}</td>
-                                            <td className="px-4 py-3 border-r border-gray-100">{row.operateTime}</td>
-                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                <button className="text-blue-600 hover:text-blue-800 mr-3 font-medium" onClick={() => handleEdit(row)}>编辑</button>
-                                                <button className="text-red-500 hover:text-red-700 font-medium" onClick={() => handleUnbind(row)}>解除关联</button>
+                                            {settleTab === "pending" && (
+                                                <td className="px-4 py-3 border-r border-gray-100">{row.applyTime || row.operateTime}</td>
+                                            )}
+                                            <td className="px-4 py-3 border-r border-gray-100">
+                                                {settleTab === "pending" ? (row.applicant || row.operator) : row.operator}
                                             </td>
+                                            <td className="px-4 py-3 border-r border-gray-100">{row.operateTime}</td>
+                                            {settleTab === "rejected" && (
+                                                <td className="px-4 py-3 border-r border-gray-100">{row.rejectReason || "- -"}</td>
+                                            )}
+                                            {settleTab === "pending" && (
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <button
+                                                        className="text-green-600 hover:text-green-700 mr-3 font-medium"
+                                                        onClick={() => setSettleApproveDialog(row)}
+                                                    >通过</button>
+                                                    <button
+                                                        className="text-red-500 hover:text-red-700 font-medium"
+                                                        onClick={() => { setSettleRejectReason(""); setSettleRejectDialog(row); }}
+                                                    >拒绝</button>
+                                                </td>
+                                            )}
+                                            {settleTab === "approved" && (
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    <button
+                                                        className="text-blue-600 hover:text-blue-800 mr-3 font-medium"
+                                                        onClick={() => handleEdit({ ...row } as unknown as Record<string, string>)}
+                                                    >编辑</button>
+                                                    <button
+                                                        className="text-red-500 hover:text-red-700 font-medium"
+                                                        onClick={() => handleUnbind({ ...row } as unknown as Record<string, string>)}
+                                                    >解除关联</button>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))
                                 )}
@@ -983,6 +1125,54 @@ export default function ZyunPage() {
                     <DialogFooter className="flex justify-end gap-3">
                         <Button variant="outline" onClick={() => setRejectDialog(null)}>取消</Button>
                         <Button className="bg-[#0066FF] hover:bg-[#0052cc] text-white" onClick={confirmReject}>确定</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 关联三方结算：开通申请审批通过确认 */}
+            <Dialog open={!!settleApproveDialog} onOpenChange={(open) => !open && setSettleApproveDialog(null)}>
+                <DialogContent className="max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-medium">通过申请</DialogTitle>
+                        <DialogDescription className="sr-only">审批通过该开通组织支付申请</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2 text-sm text-gray-600 space-y-2">
+                        {settleApproveDialog && (
+                            <p>确认通过「{settleApproveDialog.subjectName}」与「{settleApproveDialog.unitName}」的三方结算关联申请？</p>
+                        )}
+                        <p>通过后，该关联将进入「已通过」列表，成员可在三方产品使用该结算单元付费。</p>
+                    </div>
+                    <DialogFooter className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setSettleApproveDialog(null)}>取消</Button>
+                        <Button className="bg-[#0066FF] hover:bg-[#0052cc] text-white" onClick={confirmSettleApprove}>确定</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 关联三方结算：开通申请审批拒绝确认 */}
+            <Dialog open={!!settleRejectDialog} onOpenChange={(open) => !open && setSettleRejectDialog(null)}>
+                <DialogContent className="max-w-[400px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-medium">拒绝申请</DialogTitle>
+                        <DialogDescription className="sr-only">审批拒绝该开通组织支付申请</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2 text-sm text-gray-600 space-y-3">
+                        {settleRejectDialog && (
+                            <p>确认拒绝「{settleRejectDialog.subjectName}」与「{settleRejectDialog.unitName}」的三方结算关联申请？</p>
+                        )}
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">拒绝原因（选填）</label>
+                            <textarea
+                                value={settleRejectReason}
+                                onChange={(e) => setSettleRejectReason(e.target.value)}
+                                placeholder="请输入拒绝原因"
+                                className="w-full h-20 px-3 py-2 border border-gray-300 rounded text-sm resize-none focus:outline-none focus:border-blue-500"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setSettleRejectDialog(null)}>取消</Button>
+                        <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={confirmSettleReject}>确定拒绝</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

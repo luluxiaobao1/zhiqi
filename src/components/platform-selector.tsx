@@ -46,19 +46,6 @@ export const PLATFORMS: PlatformItem[] = [
         external: false,
     },
     {
-        name: "account后台",
-        description: "账号管理后台，账号、角色、安全与审计",
-        icon: (
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-        ),
-        href: "/accountadmin",
-        color: "from-purple-500 to-purple-600",
-        bgColor: "bg-purple-50",
-        external: false,
-    },
-    {
         name: "智汇云",
         description: "费用与三方结算管理，绑定结算单元与订单管理",
         icon: (
@@ -79,11 +66,6 @@ function PlatformCardBody({ platform }: { platform: PlatformItem }) {
         <>
             <div className={`h-2 bg-gradient-to-r ${platform.color}`}></div>
             <div className="p-6 relative">
-                {/* 改动提示角标：智汇云卡片提示"绑定结算单元"，其余卡片提示"加油包" */}
-                <div className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-[11px] font-medium text-orange-600">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                    {platform.name === "智汇云" ? "【2026.07.01】绑定结算单元" : "【2026.07.01】加油包"}
-                </div>
                 <div className={`w-20 h-20 ${platform.bgColor} rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300`}>
                     <div className="text-gray-700">
                         {platform.icon}
