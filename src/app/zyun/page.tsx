@@ -697,27 +697,36 @@ export default function ZyunPage() {
                     </div>
 
                     {/* 状态 Tab：待审批 / 已通过 / 已拒绝 */}
-                    <div className="flex items-center border-b border-gray-200 mb-4">
-                        {([
-                            { key: "pending", label: "待审批", count: settleCount.pending },
-                            { key: "approved", label: "已通过", count: settleCount.approved },
-                            { key: "rejected", label: "已拒绝", count: settleCount.rejected },
-                        ] as { key: SettlementRequestStatus; label: string; count: number }[]).map((tab) => {
-                            const active = settleTab === tab.key;
-                            return (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => setSettleTab(tab.key)}
-                                    className="relative px-5 h-10 text-sm font-medium transition-colors"
-                                    style={{ color: active ? "#0066FF" : "#5d6570" }}
-                                >
-                                    {tab.label} ({tab.count})
-                                    {active && (
-                                        <span className="absolute left-0 right-0 -bottom-px h-0.5" style={{ background: "#0066FF" }}></span>
-                                    )}
-                                </button>
-                            );
-                        })}
+                    <div className="flex items-center justify-between border-b border-gray-200 mb-4">
+                        <div className="flex items-center">
+                            {([
+                                { key: "pending", label: "待审批", count: settleCount.pending },
+                                { key: "approved", label: "已通过", count: settleCount.approved },
+                                { key: "rejected", label: "已拒绝", count: settleCount.rejected },
+                            ] as { key: SettlementRequestStatus; label: string; count: number }[]).map((tab) => {
+                                const active = settleTab === tab.key;
+                                return (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setSettleTab(tab.key)}
+                                        className="relative px-5 h-10 text-sm font-medium transition-colors"
+                                        style={{ color: active ? "#0066FF" : "#5d6570" }}
+                                    >
+                                        {tab.label} ({tab.count})
+                                        {active && (
+                                            <span className="absolute left-0 right-0 -bottom-px h-0.5" style={{ background: "#0066FF" }}></span>
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <Button
+                            size="sm"
+                            className="bg-[#0066FF] hover:bg-[#0052cc] h-8 px-4 mb-2"
+                            onClick={handleCreate}
+                        >
+                            新建关联
+                        </Button>
                     </div>
 
 
@@ -742,15 +751,6 @@ export default function ZyunPage() {
                                 ))}
                             </select>
                         </div>
-                        {settleTab === "approved" && (
-                            <Button
-                                size="sm"
-                                className="bg-[#0066FF] hover:bg-[#0052cc] h-8 px-4"
-                                onClick={handleCreate}
-                            >
-                                新建关联
-                            </Button>
-                        )}
                     </div>
 
                     <div className="bg-white border border-gray-200 rounded overflow-x-auto">
